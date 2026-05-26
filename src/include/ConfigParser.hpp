@@ -4,12 +4,16 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
 
 class ConfigParser
 {
 private:
 	std::vector<std::string> _lines;
-    std::string readFile(const std::string &filepath);
+    std::stringstream readFile(const std::string &filepath);
 public:
 	ConfigParser();
 	~ConfigParser();
