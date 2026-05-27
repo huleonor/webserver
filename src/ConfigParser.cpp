@@ -8,7 +8,7 @@ ConfigParser::~ConfigParser()
 {
 }
 
-std::stringstream ConfigParser::readFile(const std::string &filepath)
+std::string ConfigParser::readFile(const std::string &filepath)
 {
     std::ifstream file(filepath.c_str());
 
@@ -22,13 +22,13 @@ std::stringstream ConfigParser::readFile(const std::string &filepath)
     buffer << file.rdbuf();
     file.close();
 
-    return buffer;
+    return buffer.str();
 }
 
 void ConfigParser::parse(int argc, char **argv)
 {
     std::string config_path = (argc == 1 ? "configs/default.conf" : argv[1]);
-    std::stringstream content = this->readFile(config_path);
+    std::stringstream content(this->readFile(config_path));
 
     std::string line;
     while (std::getline(content, line))
