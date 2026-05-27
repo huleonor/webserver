@@ -13,7 +13,7 @@ class ConfigParser
 {
 private:
 	std::vector<std::string> _lines;
-    std::stringstream readFile(const std::string &filepath);
+    std::string readFile(const std::string &filepath);
 public:
 	ConfigParser();
 	~ConfigParser();
