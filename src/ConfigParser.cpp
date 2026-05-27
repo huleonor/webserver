@@ -1,8 +1,4 @@
 #include "include/ConfigParser.hpp"
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <cctype>
 
 ConfigParser::ConfigParser()
 {
@@ -16,27 +12,26 @@ std::string ConfigParser::readFile(const std::string &filepath)
 {
     std::ifstream file(filepath.c_str());
 
-	if (!file.is_open())
-	{
-		std::cerr << "Error: Could not open file: " << filepath << std::endl;
-		throw std::runtime_error("File not found");
-	}
+    if (!file.is_open())
+    {
+        std::cerr << "Error: Could not open file: " << filepath << std::endl;
+        throw std::runtime_error("File not found");
+    }
 
-	std::stringstream buffer;
-	buffer << file.rdbuf();
-	file.close();
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    file.close();
 
-	return buffer.str();
+    return buffer.str();
 }
 
 void ConfigParser::parse(int argc, char **argv)
 {
     std::string config_path = (argc == 1 ? "configs/default.conf" : argv[1]);
-    std::string content = this->readFile(config_path);
+    std::stringstream content(this->readFile(config_path));
 
-    std::stringstream ss(content);
     std::string line;
-    while (std::getline(ss, line))
+    while (std::getline(content, line))
     {
         line = removeComments(line);
         line = trim(line);

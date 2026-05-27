@@ -4,6 +4,10 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
 
 class ConfigParser
 {

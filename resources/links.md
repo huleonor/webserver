@@ -5,3 +5,5 @@
 [Github: Webserv: 42 School Project](https://arc.net/l/quote/tolwgzzb)
 
 https://github.com/1337fury/42Webserv
+
+https://beej.us/guide/bgnet/html/#what-is-a-socket
