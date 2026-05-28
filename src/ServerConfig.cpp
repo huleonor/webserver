@@ -22,3 +22,5 @@ void ServerConfig::setClientMaxBodySize(unsigned long size)  { _client_max_body_
 void ServerConfig::setSocketFd(int fd) 						 { _socket_fd = fd; };
 void ServerConfig::addErrorPage(int code, const std::string &page) { _error_pages[code] = page; }
 void ServerConfig::addLocation(const Location &location)     { _locations.push_back(location); }
+
+
