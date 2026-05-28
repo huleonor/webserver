@@ -10,15 +10,15 @@
 class ServerConfig
 {
 private:
-	uint16_t                   	_port;
-	std::string                	_host;
-	std::string                	_server_name;
-	std::string                	_root;
-	std::string                	_index;
-	unsigned long              	_client_max_body_size;
-	std::map<int, std::string> 	_error_pages;
-	std::vector<Location>      	_locations;
-	int							_socket_fd;
+	uint16_t                   _port;
+	std::string                _host;
+	std::string                _server_name;
+	std::string                _root;
+	std::string                _index;
+	unsigned long              _client_max_body_size;
+	std::map<int, std::string> _error_pages;
+	std::vector<Location>      _locations;
+	int                        _socket_fd;
 
 public:
 	ServerConfig();
@@ -31,6 +31,8 @@ public:
 	std::string                       getIndex() const;
 	unsigned long                     getClientMaxBodySize() const;
 	std::map<int, std::string>        getErrorPages() const;
+	int                               getSocketFd() const;
+	void                              setSocketFd(int fd);
 	std::vector<Location>             getLocations() const;
 	int								  getSocketFd() const;
 	
