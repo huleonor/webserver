@@ -1,21 +1,24 @@
 #include "include/ConfigParser.hpp"
+#include "include/ServerManager.hpp"
 #include <iostream>
 
 int main(int argc, char **argv)
 {
-    ConfigParser parser;
 	if (argc == 1 || argc == 2)
-    {
-        try
-        {
-            parser.parse(argc, argv);
-        }
-        catch (std::exception &e)
-        {
-            std::cerr << e.what();
-        }
-        
-    }
+	{
+		try
+		{
+			ServerManager manager;
+			ConfigParser parser;
+			parser.parse(argc, argv, manager);
+			manager.print();
+		}
+		catch (std::exception &e)
+		{
+			std::cerr << e.what();
+			return 1;
+		}
+	}
 	else
 	{
 		std::cout << "Error: wrong arguments" << std::endl;

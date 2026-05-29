@@ -17,7 +17,7 @@
 NAME     = webserv
 OBJ_DIR  = obj
 
-SRC      = src/main.cpp src/ConfigParser.cpp
+SRC      = src/main.cpp src/ConfigParser.cpp src/ConfigParserDirectives.cpp src/ConfigParserUtils.cpp src/Location.cpp src/ServerConfig.cpp src/ServerManager.cpp
 OBJS     = $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 TOTAL_FILE = $(words $(SRC))
 
