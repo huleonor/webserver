@@ -21,7 +21,7 @@ std::string ConfigParser::readFile(const std::string &filepath)
     std::stringstream buffer;
     buffer << file.rdbuf();
     file.close();
-    return buffer.str().str();
+    return buffer.str();
 }
 
 void ConfigParser::parse(int argc, char **argv)
