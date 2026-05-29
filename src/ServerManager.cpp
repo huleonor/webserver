@@ -1,9 +1,18 @@
 #include "include/ServerManager.hpp"
 #include <iostream>
+#include <sys/socket.h>   
+#include <netinet/in.h>   
+#include <arpa/inet.h>   
+#include <fcntl.h>      
+#include <cstring>      
+#include <cerrno>        
+#include <stdexcept>     
 
+/* ----------------------- Constructor and Destructor ----------------------- */
 ServerManager::ServerManager() {}
 ServerManager::~ServerManager() {}
 
+/* -------------------------- ServerManager Methods ------------------------- */
 void ServerManager::addServer(const ServerConfig &server) { _servers.push_back(server); }
 std::vector<ServerConfig> &ServerManager::getServers()    { return _servers; }
 size_t ServerManager::size() const                        { return _servers.size(); }
@@ -65,9 +74,15 @@ void ServerManager::print() const
 				std::cout << std::endl;
 			}
 		}
+	}
+}
 
+/*
+Creates and binds a socket for each server, then starts listening for connections
+*/
 void	ServerManager::setupServers()
 {
+
 	for (size_t i = 0; i < _servers.size(); i++)
 	{
 		int	fd = socket(AF_INET, SOCK_STREAM, 0);

@@ -14,11 +14,11 @@ int main(int argc, char **argv)
 			ConfigParser parser;
 			parser.parse(argc, argv, manager);
 			manager.print();
-      manager.setupServers();
+      		manager.setupServers();
 		}
 		catch (std::exception &e)
 		{
-			std::cerr << e.what();
+			std::cerr << "\033[31mError: " << e.what() << "\033[0m\n";
 			return 1;
 		}
 	}

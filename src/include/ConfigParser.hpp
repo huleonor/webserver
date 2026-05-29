@@ -38,10 +38,6 @@ public:
 	void parseClientMaxBodySizeDirective(const std::string &line, ServerConfig &config);
 	void parseErrorPageDirective(const std::string &line, ServerConfig &config);
 
-public:
-	ConfigParser();
-	~ConfigParser();
-
 	void parse(int argc, char **argv, ServerManager &manager);
 };
 

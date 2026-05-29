@@ -32,9 +32,7 @@ public:
 	unsigned long                     getClientMaxBodySize() const;
 	std::map<int, std::string>        getErrorPages() const;
 	int                               getSocketFd() const;
-	void                              setSocketFd(int fd);
 	std::vector<Location>             getLocations() const;
-	int								  getSocketFd() const;
 	
 	void setPort(uint16_t port);
 	void setHost(const std::string &host);
