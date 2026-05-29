@@ -1,6 +1,5 @@
 #include "include/ServerConfig.hpp"
 
-
 ServerConfig::ServerConfig()
     : _port(80),
       _host("0.0.0.0"),

@@ -1,19 +1,23 @@
-#ifndef SERVERMANAGER_HPP
-# define SERVERMANAGER_HPP
+#ifndef SERVER_MANAGER_HPP
+#define SERVER_MANAGER_HPP
 
 #include <vector>
 #include "ServerConfig.hpp"
 
 class ServerManager
 {
-	private:
-		std::vector<ServerConfig>	_servers;
+private:
+	std::vector<ServerConfig> _servers;
 
-	public:
-		ServerManager();
-		~ServerManager();
+public:
+	ServerManager();
+	~ServerManager();
 
-		void	setupServers();
+	void                       addServer(const ServerConfig &server);
+	std::vector<ServerConfig>  &getServers();
+	size_t                     size() const;
+	void                       print() const;
+	void	                     setupServers();
 };
 
 #endif
