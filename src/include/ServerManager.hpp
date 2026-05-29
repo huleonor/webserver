@@ -1,23 +1,38 @@
 #ifndef SERVER_MANAGER_HPP
 #define SERVER_MANAGER_HPP
 
+#include <poll.h>
 #include <vector>
+#include <map>
 #include "ServerConfig.hpp"
+#include "Client.hpp"
 
 class ServerManager
 {
-private:
-	std::vector<ServerConfig> _servers;
+	private:
+	// Attributes
+		std::vector<ServerConfig> _servers;
+		std::map<int, Client>	_clients;
+		std::vector<struct pollfd> _pfds;
 
-public:
-	ServerManager();
-	~ServerManager();
+	// Private methods
+		void	handleEvent();
+		void 	handleNewClient(int pfds_pos);
 
-	void                       addServer(const ServerConfig &server);
-	std::vector<ServerConfig>  &getServers();
-	size_t                     size() const;
-	void                       print() const;
-	void	                     setupServers();
+	public:
+	// Constructor and Destructor
+		ServerManager();
+		~ServerManager();
+
+	// Getters
+		std::vector<ServerConfig>  &getServers();
+	
+	// Methods
+		size_t                     size() const;
+		void                       addServer(const ServerConfig &server);
+		void					   runServer();
+		void	                   setupServers();
+		void                       print() const; /// tmp function
 };
 
 #endif

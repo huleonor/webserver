@@ -15,6 +15,7 @@ int main(int argc, char **argv)
 			parser.parse(argc, argv, manager);
 			manager.print();
       		manager.setupServers();
+			manager.runServer();
 		}
 		catch (std::exception &e)
 		{
