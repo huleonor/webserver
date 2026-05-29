@@ -17,6 +17,9 @@ class ConfigParser
 private:
 	std::vector<std::string> _lines;
 	std::string readFile(const std::string &filepath);
+public:
+	ConfigParser();
+	~ConfigParser();
 
 	std::string removeComments(const std::string &line);
 	std::string trim(const std::string &line);

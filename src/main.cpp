@@ -1,6 +1,8 @@
 #include "include/ConfigParser.hpp"
 #include "include/ServerManager.hpp"
 #include <iostream>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 int main(int argc, char **argv)
 {
@@ -12,6 +14,7 @@ int main(int argc, char **argv)
 			ConfigParser parser;
 			parser.parse(argc, argv, manager);
 			manager.print();
+      manager.setupServers();
 		}
 		catch (std::exception &e)
 		{

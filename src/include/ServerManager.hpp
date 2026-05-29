@@ -17,6 +17,7 @@ public:
 	std::vector<ServerConfig>  &getServers();
 	size_t                     size() const;
 	void                       print() const;
+	void	                     setupServers();
 };
 
 #endif

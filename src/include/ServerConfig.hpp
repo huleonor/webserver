@@ -1,6 +1,7 @@
 #ifndef SERVER_CONFIG_HPP
 #define SERVER_CONFIG_HPP
 
+#include <stdint.h>
 #include <string>
 #include <map>
 #include <vector>
@@ -33,13 +34,15 @@ public:
 	int                               getSocketFd() const;
 	void                              setSocketFd(int fd);
 	std::vector<Location>             getLocations() const;
-
+	int								  getSocketFd() const;
+	
 	void setPort(uint16_t port);
 	void setHost(const std::string &host);
 	void setServerName(const std::string &server_name);
 	void setRoot(const std::string &root);
 	void setIndex(const std::string &index);
 	void setClientMaxBodySize(unsigned long size);
+	void setSocketFd(int fd);
 	void addErrorPage(int code, const std::string &page);
 	void addLocation(const Location &location);
 };
