@@ -1,5 +1,5 @@
-#include "include/ConfigParser.hpp"
-#include "include/ServerManager.hpp"
+#include "../../include/ConfigParser.hpp"
+#include "../../include/ServerManager.hpp"
 #include <iostream>
 #include <netinet/in.h>
 #include <sys/socket.h>
