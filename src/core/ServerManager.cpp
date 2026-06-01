@@ -137,14 +137,9 @@ void	ServerManager::start()
 {
 	while(_running)
 	{
-		try
-		{
-			int	num_events = poll(&_pfds[0], _pfds.size(), 5000);
-
-			if (num_events > 0)
-				handleEvent();
-		}
-		catch(const std::exception& e) { std::cerr << "\033[31mError: " << e.what() << "\033[0m\n"; };
+		int	num_events = poll(&_pfds[0], _pfds.size(), 5000);
+		if (num_events > 0)
+			handleEvent();
 	}
 }
 
@@ -153,16 +148,20 @@ void	ServerManager::handleEvent()
 {
 	for (size_t i = 0; i < _pfds.size(); i++)
 	{
-		if (i < _servers.size())
+		try
 		{
-			if (_pfds[i].revents & POLLIN)
-				acceptNewClient(i);
+			if (i < _servers.size())
+			{
+				if (_pfds[i].revents & POLLIN)
+					acceptNewClient(i);
+			}
+			else
+			{
+				if (_pfds[i].revents == POLLIN)
+					handleClientRequest(i);
+			}
 		}
-		else
-		{
-			if (_pfds[i].revents == POLLIN)
-				handleClientRequest(i);
-		}
+		catch(const std::exception& e) { std::cerr << "\033[31mError: " << e.what() << "\033[0m\n"; };
 	}
 }
 
@@ -188,7 +187,7 @@ void	ServerManager::acceptNewClient(int pfds_pos)
 
 	int	client_fd = accept(_servers[pfds_pos].getSocketFd(), (struct sockaddr *)&addr, &addr_size);
 	if (client_fd == -1)
-		handleInitOrAcceptError(client_fd, "fcntl client failed: " + std::string(strerror(errno)));
+		handleInitOrAcceptError(client_fd, "accept client failed: " + std::string(strerror(errno)));
 	Client	newClient(_servers[pfds_pos], client_fd, addr);
 	_clients.insert(std::make_pair(client_fd, newClient));
 	struct pollfd pfd = {};
@@ -207,8 +206,8 @@ void	ServerManager::handleInitOrAcceptError(int fd, const std::string& msg)
 
 void	ServerManager::handleClientError(int pfds_pos, const std::string& msg)
 {
-	_pfds.erase(_pfds.begin() + pfds_pos);
 	_clients.erase(_pfds[pfds_pos].fd);
 	close(_pfds[pfds_pos].fd);
+	_pfds.erase(_pfds.begin() + pfds_pos);
 	throw std::runtime_error(msg);
 }

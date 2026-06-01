@@ -24,8 +24,8 @@ Client::Status		Client::getStatus() const { return _status; }
 /* --------------------------------- Methods -------------------------------- */
 void	Client::receiveHeader(const std::string& request)
 {
-	// if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
-	// 	/// send error page 
+	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
+		
 	_request_buffer.append(request);
 	size_t	pos = _request_buffer.find("\r\n\r\n");
 	if (pos != std::string::npos)
