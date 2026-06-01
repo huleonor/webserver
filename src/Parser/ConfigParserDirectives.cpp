@@ -1,4 +1,4 @@
-#include "../include/Parser/ConfigParser.hpp"
+#include "../../include/ConfigParser.hpp"
 
 void ConfigParser::parseListenDirective(const std::string &line, ServerConfig &config)
 {

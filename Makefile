@@ -6,7 +6,7 @@
 #    By: carlaugu <carlaugu@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/05/22 14:48:43 by carlaugu          #+#    #+#              #
-#    Updated: 2026/05/27 15:51:14 by carlaugu         ###   ########.fr        #
+#    Updated: 2026/06/01 21:02:34 by carlaugu         ###   ########.fr        #
 #                                                                              #
 #******************************************************************************#
 
@@ -17,7 +17,9 @@
 NAME     = webserv
 OBJ_DIR  = obj
 
-SRC      = src/main.cpp src/Parser/ConfigParser.cpp src/Parser/ConfigParserDirectives.cpp src/Parser/ConfigParserUtils.cpp src/Parser/Location.cpp src/Parser/ServerConfig.cpp src/ServerManager.cpp
+SRC      = src/core/main.cpp src/parser/ConfigParser.cpp src/parser/ConfigParserDirectives.cpp \
+		src/parser/ConfigParserUtils.cpp src/parser/Location.cpp src/parser/ServerConfig.cpp \
+		src/core/ServerManager.cpp src/core/Client.cpp
 OBJS     = $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 TOTAL_FILE = $(words $(SRC))
 
