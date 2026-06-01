@@ -24,22 +24,21 @@ Client::Status		Client::getStatus() const { return _status; }
 /* --------------------------------- Methods -------------------------------- */
 void	Client::receiveHeader(const std::string& request)
 {
-	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
-		
+	// if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
+		/// to resolv
 	_request_buffer.append(request);
 	size_t	pos = _request_buffer.find("\r\n\r\n");
 	if (pos != std::string::npos)
 	{
-		std::string	header = _request_buffer.substr(0, pos + 4);
-		header.erase(header.end() - 4, header.end());
+		std::string	header = _request_buffer.substr(0, pos);
 		_request_buffer.erase(0, pos + 4);
-		//// PARSING
+		//// PARSING - Hugo needs to change status
 	}
 }
 
 void	Client::receiveBody(const std::string& request)
 {
 	// if (_request_buffer.size() + request.size() > _server.getClientMaxBodySize())
-	// 	// send error page
+	// 	// send error page - to resolv
 	_request_buffer.append(request);
 }

@@ -34,7 +34,7 @@ class ServerManager
 	// Methods
 		size_t	size() const;
 		void	addServer(const ServerConfig &server);
-		void	handleClientRequest(int pfds_pos);
+		void	handleClientRequest(size_t& pfds_pos);
 		void	setupServers();
 		void	start();
 		void	print() const; /// tmp function

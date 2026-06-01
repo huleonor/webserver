@@ -157,22 +157,32 @@ void	ServerManager::handleEvent()
 			}
 			else
 			{
-				if (_pfds[i].revents == POLLIN)
+				if (_pfds[i].revents & POLLIN)
 					handleClientRequest(i);
 			}
 		}
-		catch(const std::exception& e) { std::cerr << "\033[31mError: " << e.what() << "\033[0m\n"; };
+		catch(const std::exception& e) 
+		{ 
+			std::cerr << "\033[31mError: " << e.what() << "\033[0m\n";
+			if (i >= _servers.size())
+				i--; 
+		};
 	}
 }
 
-void	ServerManager::handleClientRequest(int pfds_pos)
+void	ServerManager::handleClientRequest(size_t& pfds_pos)
 {
 	char	buffer[4096] = {0};
+	ssize_t	n = recv(_pfds[pfds_pos].fd, buffer, sizeof(buffer), 0);
+	if (n == -1)
+    	handleClientError(pfds_pos, "recv failed");
+	if (n == 0)
+	{
+		handleClientError(pfds_pos, "");
+		pfds_pos--;
+		return ;
+	}
 	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
-
-	ssize_t	n = recv(_pfds[pfds_pos].fd, &buffer, sizeof(buffer), 0);
-	if (n <= 0)
-		handleClientError(pfds_pos, "recv: impossible to read data");
 	if (it->second.getStatus() == Client::READING_HEADER)
 		it->second.receiveHeader(buffer);
 	else
@@ -188,6 +198,8 @@ void	ServerManager::acceptNewClient(int pfds_pos)
 	int	client_fd = accept(_servers[pfds_pos].getSocketFd(), (struct sockaddr *)&addr, &addr_size);
 	if (client_fd == -1)
 		handleInitOrAcceptError(client_fd, "accept client failed: " + std::string(strerror(errno)));
+	if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
+			handleInitOrAcceptError(client_fd, "fcntl failed: " + std::string(strerror(errno)));
 	Client	newClient(_servers[pfds_pos], client_fd, addr);
 	_clients.insert(std::make_pair(client_fd, newClient));
 	struct pollfd pfd = {};
@@ -199,7 +211,7 @@ void	ServerManager::acceptNewClient(int pfds_pos)
 /* ---------------------------- Helper functions ---------------------------- */
 void	ServerManager::handleInitOrAcceptError(int fd, const std::string& msg)
 {
-	if (fd > 0)
+	if (fd != -1)
 		close(fd);
 	throw std::runtime_error(msg);
 }
@@ -209,5 +221,6 @@ void	ServerManager::handleClientError(int pfds_pos, const std::string& msg)
 	_clients.erase(_pfds[pfds_pos].fd);
 	close(_pfds[pfds_pos].fd);
 	_pfds.erase(_pfds.begin() + pfds_pos);
-	throw std::runtime_error(msg);
+	if (!msg.empty())
+		throw std::runtime_error(msg);
 }
