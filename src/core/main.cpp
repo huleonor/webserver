@@ -1,13 +1,14 @@
 #include "../../include/ConfigParser.hpp"
 #include "../../include/ServerManager.hpp"
-#include <iostream>
-#include <netinet/in.h>
 #include <sys/socket.h>
+#include <signal.h>
 
 int main(int argc, char **argv)
 {
 	if (argc == 1 || argc == 2)
 	{
+		signal(SIGINT, ServerManager::handleSignal);
+		signal(SIGTERM, ServerManager::handleSignal);
 		try
 		{
 			ServerManager manager;
@@ -15,7 +16,7 @@ int main(int argc, char **argv)
 			parser.parse(argc, argv, manager);
 			manager.print();
       		manager.setupServers();
-			manager.runServer();
+			manager.start();
 		}
 		catch (std::exception &e)
 		{
