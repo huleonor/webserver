@@ -10,7 +10,7 @@
 #include <cctype>
 #include <stdexcept>
 #include "ServerConfig.hpp"
-#include "ServerManager.hpp"
+#include "../ServerManager.hpp"
 
 class ConfigParser
 {

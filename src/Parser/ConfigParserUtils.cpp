@@ -1,4 +1,4 @@
-#include "include/ConfigParser.hpp"
+#include "../include/Parser/ConfigParser.hpp"
 
 std::string ConfigParser::removeComments(const std::string &line)
 {

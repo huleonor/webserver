@@ -1,4 +1,4 @@
-#include "include/Location.hpp"
+#include "../include/Parser/Location.hpp"
 
 Location::Location() : _autoindex(false) {}
 Location::~Location() {}

@@ -1,4 +1,4 @@
-#include "include/ServerConfig.hpp"
+#include "../include/Parser/ServerConfig.hpp"
 
 ServerConfig::ServerConfig()
     : _port(80),

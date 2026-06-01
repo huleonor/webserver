@@ -1,4 +1,4 @@
-#include "include/ConfigParser.hpp"
+#include "../include/Parser/ConfigParser.hpp"
 
 ConfigParser::ConfigParser() {}
 ConfigParser::~ConfigParser() {}
@@ -48,17 +48,28 @@ void ConfigParser::buildServers(ServerManager &manager)
     {
         if (_lines[i] == "server {")
         {
+            size_t block_start = ++i;
             ServerConfig config;
-            i++;
-            parseServerBlock(i, config);
-            manager.addServer(config);
+            try
+            {
+                parseServerBlock(i, config);
+                manager.addServer(config);
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "[WARNING] Skipping invalid server block: " << e.what() << std::endl;
+                i = block_start;
+                while (i < _lines.size() && _lines[i] != "server {")
+                    i++;
+                i--;
+            }
         }
     }
 }
 
 void ConfigParser::parseServerBlock(size_t &i, ServerConfig &config)
 {
-    while (i < _lines.size() && _lines[i] != "}")
+    while (i < _lines.size() && _lines[i] != "}" && _lines[i] != "server {")
     {
         const std::string &line = _lines[i];
 
@@ -89,6 +100,8 @@ void ConfigParser::parseServerBlock(size_t &i, ServerConfig &config)
         }
         i++;
     }
+    if (i >= _lines.size() || _lines[i] == "server {")
+        throw std::runtime_error("unclosed server block (missing '}')");
 }
 
 void ConfigParser::parseLocationBlock(size_t &i, Location &location)
@@ -130,4 +143,6 @@ void ConfigParser::parseLocationBlock(size_t &i, Location &location)
             location.setUploadPath(extractValue(line));
         i++;
     }
+    if (i >= _lines.size())
+        throw std::runtime_error("unclosed location block (missing '}')");
 }

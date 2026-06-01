@@ -2,7 +2,7 @@
 #define SERVER_MANAGER_HPP
 
 #include <vector>
-#include "ServerConfig.hpp"
+#include "Parser/ServerConfig.hpp"
 
 class ServerManager
 {
