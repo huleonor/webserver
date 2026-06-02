@@ -26,7 +26,6 @@ class Client
 			bool	headers_parsed;
 			bool	body_parsed;
     	};
-
 	// Attribues
 		int				_client_socket;
 		std::string		_request_buffer;
@@ -38,19 +37,16 @@ class Client
 		Status			_status;
 
 	public:
-	// Static Constant Members
+	// Constants
 		static const int	MAX_HEADER_SIZE = 8192;
-
 	// Constructor and Destructor
 		Client(ServerConfig& server, int fd, struct sockaddr_in& addr);
 		~Client();
-
 	// Getters
 		in_port_t	getClientPort() const;
 		in_addr_t	getClientAddr() const;
 		Status		getStatus() const;
-
-	// Methods
+	// Request Handling
 		void	receiveHeader(const std::string& request);
 		void	receiveBody(const std::string& request);
 };

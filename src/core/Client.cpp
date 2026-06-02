@@ -21,7 +21,7 @@ in_port_t	Client::getClientPort() const  { return _client_port; }
 in_addr_t	Client::getClientAddr() const  { return _client_addr; }
 Client::Status		Client::getStatus() const { return _status; }
 
-/* --------------------------------- Methods -------------------------------- */
+/* --------------------------------- Request Handling -------------------------------- */
 void	Client::receiveHeader(const std::string& request)
 {
 	// if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
@@ -32,6 +32,8 @@ void	Client::receiveHeader(const std::string& request)
 	{
 		std::string	header = _request_buffer.substr(0, pos);
 		_request_buffer.erase(0, pos + 4);
+		std::cout << "\033[32mClient: " << _client_addr << ":" << _client_port 
+			<< " | header received\033[0m" << std::endl;
 		//// PARSING - Hugo needs to change status
 	}
 }

@@ -11,7 +11,7 @@ int main(int argc, char **argv)
 		signal(SIGTERM, ServerManager::handleSignal);
 		try
 		{
-			ServerManager manager;
+			ServerManager	manager;
 			ConfigParser parser;
 			parser.parse(argc, argv, manager);
 			manager.print();

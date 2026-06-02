@@ -53,7 +53,7 @@ void ConfigParser::buildServers(ServerManager &manager)
             try
             {
                 parseServerBlock(i, config);
-                manager.addServer(config);
+				manager.addServer(config);
             }
             catch (const std::exception &e)
             {
