@@ -26,7 +26,6 @@ void	ServerManager::handleInitOrAcceptError(int fd, const std::string& msg)
 std::vector<ServerConfig> &ServerManager::getServers()	{ return _servers; }
 size_t ServerManager::size()                        	{ return _servers.size(); }
 
-
 /* ---------------------------------- Setup --------------------------------- */
 void ServerManager::addServer(const ServerConfig &server) { _servers.push_back(server); }
 
@@ -68,10 +67,11 @@ void	ServerManager::setupServers()
 		catch(const std::exception& e) 
 		{ 
 			std::cerr << "\033[31mError: " << e.what() << "\033[0m\n"; 
-			if (_servers.size() == 1)
-				throw std::runtime_error("no servers available, cannot continue");
 		}
 	}
+	if (_pfds.empty())
+		throw std::runtime_error("no servers available, cannot continue");
+
 }
 
 /* --------------------------------- Runtime -------------------------------- */
@@ -90,6 +90,8 @@ void	ServerManager::handleEvent()
 			{
 				if (_pfds[i].revents & POLLIN)
 					handleClientRequest(i);
+				else if (_pfds[i].revents & POLLOUT)
+					handleClientResponse(i);
 			}
 		}
 		catch(const std::exception& e) 
@@ -147,9 +149,22 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 	}
 	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
 	if (it->second.getStatus() == Client::READING_HEADER)
-		it->second.receiveHeader(buffer);
+		it->second.receiveHeader(std::string(buffer, n));
 	else
-		it->second.receiveBody(buffer);
+		it->second.receiveBody(std::string(buffer, n));
+	if (it->second.getStatus() == (Client::ERROR))
+		_pfds[pfds_pos].events = POLLOUT;
+}
+
+void	ServerManager::handleClientResponse(size_t& pfds_pos)
+{
+	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	(void)it;
+	// if (it->second.getStatus() == Client::ERROR)
+	// {
+	// 	it->second.buildErrorResponse();
+	// 	handleClientError(pfds_pos, "change this ");
+	// }
 }
 
 void	ServerManager::handleClientError(int pfds_pos, const std::string& msg)

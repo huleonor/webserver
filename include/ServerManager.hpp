@@ -17,6 +17,7 @@ class ServerManager
 		static	bool	_running;
 	// Client Management
 		void	handleClientRequest(size_t& pfds_pos);
+		void	handleClientResponse(size_t& pfds_pos);
 		void	acceptNewClient(int pfds_pos);
 	// Error handling
 		void	handleClientError(int pfds_pos, const std::string& msg);

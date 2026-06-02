@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include "ServerConfig.hpp"
+#include "Response.hpp"
 
 class Client
 {
@@ -13,7 +14,8 @@ class Client
 		{
 			READING_HEADER,
 			READING_BODY,
-			WRITING
+			WRITING,
+			ERROR
 		};
 	private:
 		struct HttpRequest 
@@ -21,20 +23,18 @@ class Client
 			std::string	method;
 			std::string	path;
 			std::string	query_string;
-			std::string version; 
+			std::string version;
 			std::map<std::string, std::string>	headers;
-			bool	headers_parsed;
-			bool	body_parsed;
     	};
 	// Attribues
 		int				_client_socket;
 		std::string		_request_buffer;
-		std::string		_response_buffer;
 		HttpRequest 	_request;
 		ServerConfig&	_server;
 		in_addr_t		_client_addr;
 		in_port_t		_client_port;
 		Status			_status;
+		Response		_response;
 
 	public:
 	// Constants
@@ -46,6 +46,10 @@ class Client
 		in_port_t	getClientPort() const;
 		in_addr_t	getClientAddr() const;
 		Status		getStatus() const;
+	// Setters
+		void		setStatus(Status status);
+	// Response
+		void	buildErrorResponse();
 	// Request Handling
 		void	receiveHeader(const std::string& request);
 		void	receiveBody(const std::string& request);
