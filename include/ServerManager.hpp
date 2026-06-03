@@ -16,7 +16,7 @@ class ServerManager
 		std::vector<ServerConfig> _servers;
 		static	bool	_running;
 	// Client Management
-		void	acceptNewClient(int pfds_pos);
+		void	acceptNewClient(size_t pfds_pos);
 		void	handleClientRequest(size_t& pfds_pos);
 		void	handleClientResponse(size_t& pfds_pos);
 		void	closeConnection(size_t& pfds_pos, const std::string& msg);
@@ -24,6 +24,7 @@ class ServerManager
 		void	handleInitOrAcceptError(int fd, const std::string& msg);
 	// Runtime
 		void	handleEvent();
+		bool	isServerSocket(size_t pos);
 
 	public:
 	// Iterator

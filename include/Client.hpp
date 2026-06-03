@@ -31,6 +31,10 @@ class Client
 		Response		_response;
 		ssize_t			_bytes_sent;
 
+	// Request Handling
+		void	receiveHeader(const std::string& request);
+		void	receiveBody(const std::string& request);
+
 	public:
 	// Constants
 		// static const int	MAX_HEADER_SIZE = 8192;
@@ -49,11 +53,10 @@ class Client
 		void		setStatus(Status status);
 		void		setBytesSent(ssize_t n);
 	// Response
-		void	buildErrorResponse();
+		void	buildErrorResponse(int code, const std::string& phrase);
 		void	sendResponse();
 	// Request Handling
-		void	receiveHeader(const std::string& request);
-		void	receiveBody(const std::string& request);
+		ssize_t	receiveData();
 };
 
 #endif

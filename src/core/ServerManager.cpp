@@ -64,124 +64,120 @@ void	ServerManager::setupServers()
 			pfd.events = POLLIN;
 			_pfds.push_back(pfd);
 		}
-		catch(const std::exception& e) 
-		{ 
-			std::cerr << "\033[31mError: " << e.what() << "\033[0m\n"; 
-		}
+		catch(const std::exception& e)	{ std::cerr << "\033[31mError: " << e.what() << "\033[0m\n"; }
 	}
 	if (_pfds.empty())
 		throw std::runtime_error("no servers available, cannot continue");
-
 }
 
 /* --------------------------------- Runtime -------------------------------- */
-void	ServerManager::handleEvent()
-{
-	for (size_t i = 0; i < _pfds.size(); i++)
-	{
-		try
-		{
-			if (i < _servers.size())
-			{
-				if (_pfds[i].revents & POLLIN)
-					acceptNewClient(i);
-			}
-			else
-			{
-				if (_pfds[i].revents & POLLIN)
-					handleClientRequest(i);
-				else if (_pfds[i].revents & POLLOUT)
-					handleClientResponse(i);
-			}
-		}
-		catch(const std::exception& e) 
-		{ 
-			std::cerr << "\033[31mError: " << e.what() << "\033[0m\n";
-			if (i >= _servers.size())
-				i--; 
-		};
-	}
-}
+bool	ServerManager::isServerSocket(size_t pos)	{ return (pos < _servers.size()); }
 
 void	ServerManager::start()
 {
 	while(_running)
 	{
 		int	num_events = poll(&_pfds[0], _pfds.size(), 5000);
+		// if (num_events == -1)
 		if (num_events > 0)
 			handleEvent();
 	}
 }
 
-/* ---------------------------- Client Management --------------------------- */
-void	ServerManager::acceptNewClient(int pfds_pos)
+void	ServerManager::handleEvent()
 {
-	struct	sockaddr_in	addr = {};
-	socklen_t	addr_size = sizeof(addr);
+	for (size_t i = 0; i < _pfds.size(); i++)
+	{
+		try
+		{
+			if (_pfds[i].revents & POLLIN)
+			{
+				if (isServerSocket(i))
+					acceptNewClient(i);
+				else
+					handleClientRequest(i);
+			}
+			else if (_pfds[i].revents & POLLOUT)
+				handleClientResponse(i);
+		}
+		catch(const std::exception& e) 
+		{ 
+			std::cerr << "\033[31mError: " << e.what() << "\033[0m\n";
+		};
+	}
+}
 
-	int	client_fd = accept(_servers[pfds_pos].getSocketFd(), (struct sockaddr *)&addr, &addr_size);
-	if (client_fd == -1)
-		handleInitOrAcceptError(client_fd, "accept client failed: " + std::string(strerror(errno)));
-	if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
+/* ---------------------------- Client Management --------------------------- */
+void	ServerManager::acceptNewClient(size_t pfds_pos)
+{
+	while (true)
+	{
+		struct	sockaddr_in	addr = {};
+		socklen_t	addr_size = sizeof(addr);
+	
+		int	client_fd = accept(_servers[pfds_pos].getSocketFd(), (struct sockaddr *)&addr, &addr_size);
+		if (client_fd == -1)
+			break;
+		if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
 			handleInitOrAcceptError(client_fd, "fcntl failed: " + std::string(strerror(errno)));
-	Client	newClient(client_fd, addr, _servers[pfds_pos]);
-	_clients.insert(std::make_pair(client_fd, newClient));
-	struct pollfd pfd = {};
-	pfd.fd = client_fd;
-	pfd.events = POLLIN;
-	_pfds.push_back(pfd);
-
-	std::cout << "\033[32m[INFO]: " << inet_ntoa(addr.sin_addr) << ":" 
-		<< ntohs(addr.sin_port) << " | connected\033[0m" << std::endl;
+		Client	newClient(client_fd, addr, _servers[pfds_pos]);
+		_clients.insert(std::make_pair(client_fd, newClient));
+		struct pollfd pfd = {};
+		pfd.fd = client_fd;
+		pfd.events = POLLIN;
+		_pfds.push_back(pfd);
+		std::cout << "\033[32m[INFO]: " 
+				  << inet_ntoa(addr.sin_addr) << ":" 
+				  << ntohs(addr.sin_port) 
+				  << " | connected\033[0m" 
+				  << std::endl;
+	}
 }
 
 void	ServerManager::handleClientRequest(size_t& pfds_pos)
 {
-	char	buffer[4096] = {0};
-	ssize_t	n = recv(_pfds[pfds_pos].fd, buffer, sizeof(buffer), 0);
+	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	ssize_t	n = it->second.receiveData();
+
 	if (n == -1)
 		closeConnection(pfds_pos, "recv failed: " + std::string(strerror(errno)));
-	if (n == 0)
-	{
+	else if (n == 0)
 		closeConnection(pfds_pos, "");
-		return ;
-	}
-	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
-	if (it->second.getStatus() == Client::READING_HEADER)
-		it->second.receiveHeader(std::string(buffer, n));
-	else
-		it->second.receiveBody(std::string(buffer, n));
-	if (it->second.getStatus() == (Client::ERROR))
+	else if (it->second.getStatus() == Client::ERROR)
 		_pfds[pfds_pos].events = POLLOUT;
 }
 
 void	ServerManager::handleClientResponse(size_t& pfds_pos)
 {
 	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	it->second.sendResponse();
+	std::string	msg = "";
 	if (it->second.getStatus() == Client::ERROR)
 	{
-		it->second.buildErrorResponse();
-		it->second.sendResponse();
-		if (it->second.getStatus() == Client::CLOSE)
-			closeConnection(pfds_pos, "");
+		msg = "send failed: " + std::string(strerror(errno));
+		it->second.setStatus(Client::CLOSE);
 	}
+	if (it->second.getStatus() == Client::CLOSE)
+		closeConnection(pfds_pos, msg);
 }
 
 void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
 {
-	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
 	struct	in_addr	tmp;
+	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
+
 	tmp.s_addr = it->second.getClientAddr();
 	std::string	addr = inet_ntoa(tmp);
 	int	port = ntohs(it->second.getClientPort());
 	_clients.erase(_pfds[pfds_pos].fd);
 	close(_pfds[pfds_pos].fd);
 	_pfds.erase(_pfds.begin() + pfds_pos);
-	if (!msg.empty())
-		throw std::runtime_error(msg);
 	pfds_pos--;
 	std::cout << "\033[31m[INFO]: " <<  addr << ":" 
-		<< port  << " | disconnected\033[0m" << std::endl;
+			  << port  << " | disconnected\033[0m" 
+			  << std::endl;
+	if (!msg.empty())
+		throw std::runtime_error(msg);
 }
 
 /* ----------------------------- Signal handling ---------------------------- */
