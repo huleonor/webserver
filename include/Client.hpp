@@ -16,7 +16,8 @@ class Client
 			READING_HEADER,
 			READING_BODY,
 			WRITING,
-			ERROR
+			ERROR,
+			CLOSE
 		};
 	private:
 	// Attribues
@@ -30,9 +31,14 @@ class Client
 		Response		_response;
 		ssize_t			_bytes_sent;
 
+	// Request Handling
+		void	receiveHeader(const std::string& request);
+		void	receiveBody(const std::string& request);
+
 	public:
 	// Constants
-		static const int	MAX_HEADER_SIZE = 8192;
+		// static const int	MAX_HEADER_SIZE = 8192;
+		static const int	MAX_HEADER_SIZE = 8;
 	// Constructor and Destructor
 		Client(int fd, struct sockaddr_in& addr, ServerConfig& server);
 		~Client();
@@ -45,12 +51,12 @@ class Client
 		ssize_t				getBytesSent() const;
 	// Setters
 		void		setStatus(Status status);
-		void		setBytesSent(int n);
+		void		setBytesSent(ssize_t n);
 	// Response
-		void	buildErrorResponse();
+		void	buildErrorResponse(int code, const std::string& phrase);
+		void	sendResponse();
 	// Request Handling
-		void	receiveHeader(const std::string& request);
-		void	receiveBody(const std::string& request);
+		ssize_t	receiveData();
 };
 
 #endif
