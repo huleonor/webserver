@@ -43,6 +43,7 @@ class Client
 		Client(ServerConfig& server, int fd, struct sockaddr_in& addr);
 		~Client();
 	// Getters
+		int			getClientSocket() const;
 		in_port_t	getClientPort() const;
 		in_addr_t	getClientAddr() const;
 		Status		getStatus() const;

@@ -17,8 +17,9 @@ Client::Client(ServerConfig& server, int fd, struct sockaddr_in& addr)
 Client::~Client() {};
 
 /* --------------------------------- Getters -------------------------------- */
-in_port_t	Client::getClientPort() const  { return _client_port; }
-in_addr_t	Client::getClientAddr() const  { return _client_addr; }
+int					Client::getClientSocket() const { return _client_socket; }
+in_port_t			Client::getClientPort() const  { return _client_port; }
+in_addr_t			Client::getClientAddr() const  { return _client_addr; }
 Client::Status		Client::getStatus() const { return _status; }
 
 /* --------------------------------- Setters -------------------------------- */
