@@ -131,8 +131,8 @@ void	ServerManager::acceptNewClient(int pfds_pos)
 	pfd.events = POLLIN;
 	_pfds.push_back(pfd);
 
-	std::cout << "\033[32mClient: " << addr.sin_addr.s_addr << ":" 
-		<< addr.sin_port << " | accepted\033[0m" << std::endl;
+	std::cout << "\033[32m[INFO]: " << inet_ntoa(addr.sin_addr) << ":" 
+		<< ntohs(addr.sin_port) << " | connected\033[0m" << std::endl;
 }
 
 void	ServerManager::handleClientRequest(size_t& pfds_pos)
@@ -140,11 +140,10 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 	char	buffer[4096] = {0};
 	ssize_t	n = recv(_pfds[pfds_pos].fd, buffer, sizeof(buffer), 0);
 	if (n == -1)
-    	handleClientError(pfds_pos, "recv failed");
+		closeConnection(pfds_pos, "recv failed: " + std::string(strerror(errno)));
 	if (n == 0)
 	{
-		handleClientError(pfds_pos, "");
-		pfds_pos--;
+		closeConnection(pfds_pos, "");
 		return ;
 	}
 	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
@@ -162,17 +161,27 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 	if (it->second.getStatus() == Client::ERROR)
 	{
 		it->second.buildErrorResponse();
-		handleClientError(pfds_pos, "change this ");
+		it->second.sendResponse();
+		if (it->second.getStatus() == Client::CLOSE)
+			closeConnection(pfds_pos, "");
 	}
 }
 
-void	ServerManager::handleClientError(int pfds_pos, const std::string& msg)
+void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
 {
+	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	struct	in_addr	tmp;
+	tmp.s_addr = it->second.getClientAddr();
+	std::string	addr = inet_ntoa(tmp);
+	int	port = ntohs(it->second.getClientPort());
 	_clients.erase(_pfds[pfds_pos].fd);
 	close(_pfds[pfds_pos].fd);
 	_pfds.erase(_pfds.begin() + pfds_pos);
 	if (!msg.empty())
 		throw std::runtime_error(msg);
+	pfds_pos--;
+	std::cout << "\033[31m[INFO]: " <<  addr << ":" 
+		<< port  << " | disconnected\033[0m" << std::endl;
 }
 
 /* ----------------------------- Signal handling ---------------------------- */

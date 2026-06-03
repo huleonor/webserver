@@ -27,13 +27,24 @@ ssize_t				Client::getBytesSent() const		{ return (_bytes_sent); }
 
 /* --------------------------------- Setters -------------------------------- */
 void	Client::setStatus(Status status)	{ _status = status; }
-void	Client::setBytesSent(int n)			{ _bytes_sent = n; }
+void	Client::setBytesSent(ssize_t n)			{ _bytes_sent = n; }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::buildErrorResponse()
 {
 	_response.buildError(_server);
-	std::cout << _response.getFullResponse() << std::endl; //// delete
+}
+
+void	Client::sendResponse()
+{
+	if (_status == WRITING)
+		_status	= WRITING;
+	size_t		responseSize = _response.getFullResponse().size();
+	size_t		bufferSize = responseSize - _bytes_sent;
+	const char*	buff = _response.getFullResponse().c_str() + _bytes_sent;
+	ssize_t	n = send(_client_socket, buff, bufferSize, 0);
+	if (n == -1 || (size_t)(_bytes_sent += n) >= responseSize)
+		_status = CLOSE;
 }
 
 /* --------------------------------- Request Handling -------------------------------- */
