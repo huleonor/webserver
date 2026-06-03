@@ -1,0 +1,42 @@
+#ifndef RESPONSE_HPP
+# define RESPONSE_HPP
+
+#include "ServerConfig.hpp"
+#include <string>
+#include <map>
+
+class Response
+{
+	private:
+	// Attribute
+		int			_status_code;
+		std::string	_status_phrase;
+		std::string	_first_line;
+		std::string	_headers;
+		std::string	_body;
+		std::string	_full_response; 
+	// Generate default error page
+		void	generateDefaultErrorPage();
+
+	public:
+	// Constructor and Destructor
+		Response();
+		~Response();
+	// Setter
+		void	setCodeStatus(int code);
+		void	setStatusPhrase(const std::string& phrase);
+		void	setFirstLine();
+		void	setErrorBody(const ServerConfig& server);
+		void	setHeaders();
+		void	setFullResponse();
+	// Getter
+		const std::string&	getFirstLine() const;
+		const std::string&	getBody() const;
+		const std::string&	getHeaders() const;
+		const std::string&	getFullResponse() const;
+
+	// Build Response
+		void	buildError(const ServerConfig& server);
+};
+
+#endif

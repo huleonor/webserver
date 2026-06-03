@@ -23,16 +23,15 @@ private:
 public:
 	ServerConfig();
 	~ServerConfig();
-
-	uint16_t                          getPort() const;
-	std::string                       getHost() const;
-	std::string                       getServerName() const;
-	std::string                       getRoot() const;
-	std::string                       getIndex() const;
-	unsigned long                     getClientMaxBodySize() const;
-	std::map<int, std::string>        getErrorPages() const;
-	int                               getSocketFd() const;
-	std::vector<Location>             getLocations() const;
+	uint16_t                          	getPort() const;
+	const std::string&					getHost() const;
+	const std::string&					getServerName() const;
+	const std::string&					getRoot() const;
+	const std::string&					getIndex() const;
+	unsigned long                     	getClientMaxBodySize() const;
+	const std::map<int, std::string>&	getErrorPages() const;
+	int                               	getSocketFd() const;
+	const std::vector<Location>&		getLocations() const;
 	
 	void setPort(uint16_t port);
 	void setHost(const std::string &host);

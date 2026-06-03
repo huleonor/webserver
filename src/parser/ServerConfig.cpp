@@ -13,13 +13,13 @@ ServerConfig::ServerConfig()
 ServerConfig::~ServerConfig() {}
 
 uint16_t                   ServerConfig::getPort() const           { return _port; }
-std::string                ServerConfig::getHost() const           { return _host; }
-std::string                ServerConfig::getServerName() const     { return _server_name; }
-std::string                ServerConfig::getRoot() const           { return _root; }
-std::string                ServerConfig::getIndex() const          { return _index; }
+const std::string&                ServerConfig::getHost() const           { return _host; }
+const std::string&                ServerConfig::getServerName() const     { return _server_name; }
+const std::string&                ServerConfig::getRoot() const           { return _root; }
+const std::string&                ServerConfig::getIndex() const          { return _index; }
 unsigned long              ServerConfig::getClientMaxBodySize() const { return _client_max_body_size; }
-std::map<int, std::string> ServerConfig::getErrorPages() const     { return _error_pages; }
-std::vector<Location>      ServerConfig::getLocations() const      { return _locations; }
+const std::map<int, std::string>& ServerConfig::getErrorPages() const     { return _error_pages; }
+const std::vector<Location>&      ServerConfig::getLocations() const      { return _locations; }
 int  					   ServerConfig::getSocketFd() const       { return _socket_fd; }
 void ServerConfig::setPort(uint16_t port)                    { _port = port; }
 void ServerConfig::setHost(const std::string &host)          { _host = host; }

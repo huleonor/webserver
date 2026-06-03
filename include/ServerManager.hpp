@@ -5,42 +5,42 @@
 #include "Client.hpp"
 #include <vector>
 #include <map>
+#include <poll.h>
 
 class ServerManager
 {
 	private:
 	// Attributes
-		std::vector<ServerConfig> _servers;
 		std::map<int, Client>	_clients;
 		std::vector<struct pollfd> _pfds;
-		static bool	_running;
-
-	// Private methods
-		void	handleEvent();
-		void 	acceptNewClient(int pfds_pos);
-		void	handleInitOrAcceptError(int fd, const std::string& msg);
+		std::vector<ServerConfig> _servers;
+		static	bool	_running;
+	// Client Management
+		void	handleClientRequest(size_t& pfds_pos);
+		void	handleClientResponse(size_t& pfds_pos);
+		void	acceptNewClient(int pfds_pos);
+	// Error handling
 		void	handleClientError(int pfds_pos, const std::string& msg);
+		void	handleInitOrAcceptError(int fd, const std::string& msg);
+	// Runtime
+		void	handleEvent();
 
 	public:
+	// Iterator
 		typedef std::map<int, Client>::iterator	client_it;
-
-	// Constructor and Destructor
-		ServerManager();
-		~ServerManager();
-
 	// Getters
 		std::vector<ServerConfig>  &getServers();
-	
-	// Methods
-		size_t	size() const;
-		void	addServer(const ServerConfig &server);
-		void	handleClientRequest(int pfds_pos);
+		size_t	size();
+	// Setup
 		void	setupServers();
+		void	addServer(const ServerConfig &server);
+	//Runtime
 		void	start();
-		void	print() const; /// tmp function
-	
-	// Public Static Methods
-		static void		handleSignal(int sig);
+	// Signal handling
+		static void	handleSignal(int sig);
+		
+	// Temp
+		void	print(); /// tmp function
 };
 
 #endif
