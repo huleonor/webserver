@@ -3,27 +3,31 @@
 #include <iostream>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
-Client::Client(ServerConfig& server, int fd, struct sockaddr_in& addr)
+Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
     : _client_socket(fd),           
-      _request_buffer(),                       
-      _request(),                   
-      _server(server),             
-      _client_addr(addr.sin_addr.s_addr), 
-      _client_port(addr.sin_port),
-	  _status(READING_HEADER)
+	_client_addr(addr.sin_addr.s_addr), 
+	_client_port(addr.sin_port),
+	_server(server),             
+    _request_buffer(),                       
+    _request(),                   
+	_status(READING_HEADER),
+	_bytes_sent(0)
 {
 }
 
 Client::~Client() {};
 
 /* --------------------------------- Getters -------------------------------- */
-int					Client::getClientSocket() const { return _client_socket; }
-in_port_t			Client::getClientPort() const  { return _client_port; }
-in_addr_t			Client::getClientAddr() const  { return _client_addr; }
-Client::Status		Client::getStatus() const { return _status; }
+int					Client::getClientSocket() const 	{ return (_client_socket); }
+in_port_t			Client::getClientPort() const  		{ return (_client_port); }
+in_addr_t			Client::getClientAddr() const  		{ return (_client_addr); }
+Client::Status		Client::getStatus() const			{ return (_status); }
+const std::string&	Client::getResponse() const			{ return (_response.getFullResponse()); }
+ssize_t				Client::getBytesSent() const		{ return (_bytes_sent); }
 
 /* --------------------------------- Setters -------------------------------- */
 void	Client::setStatus(Status status)	{ _status = status; }
+void	Client::setBytesSent(int n)			{ _bytes_sent = n; }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::buildErrorResponse()

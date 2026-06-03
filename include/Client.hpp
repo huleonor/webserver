@@ -6,6 +6,7 @@
 #include <map>
 #include "ServerConfig.hpp"
 #include "Response.hpp"
+#include "HttpRequest.hpp"
 
 class Client
 {
@@ -18,37 +19,33 @@ class Client
 			ERROR
 		};
 	private:
-		struct HttpRequest 
-		{
-			std::string	method;
-			std::string	path;
-			std::string	query_string;
-			std::string version;
-			std::map<std::string, std::string>	headers;
-    	};
 	// Attribues
 		int				_client_socket;
-		std::string		_request_buffer;
-		HttpRequest 	_request;
-		ServerConfig&	_server;
 		in_addr_t		_client_addr;
 		in_port_t		_client_port;
+		ServerConfig&	_server;
+		std::string		_request_buffer;
+		HppRequest 		_request;
 		Status			_status;
 		Response		_response;
+		ssize_t			_bytes_sent;
 
 	public:
 	// Constants
 		static const int	MAX_HEADER_SIZE = 8192;
 	// Constructor and Destructor
-		Client(ServerConfig& server, int fd, struct sockaddr_in& addr);
+		Client(int fd, struct sockaddr_in& addr, ServerConfig& server);
 		~Client();
 	// Getters
-		int			getClientSocket() const;
-		in_port_t	getClientPort() const;
-		in_addr_t	getClientAddr() const;
-		Status		getStatus() const;
+		int					getClientSocket() const;
+		in_port_t			getClientPort() const;
+		in_addr_t			getClientAddr() const;
+		Status				getStatus() const;
+		const std::string&	getResponse() const;
+		ssize_t				getBytesSent() const;
 	// Setters
 		void		setStatus(Status status);
+		void		setBytesSent(int n);
 	// Response
 		void	buildErrorResponse();
 	// Request Handling

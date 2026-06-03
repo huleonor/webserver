@@ -124,7 +124,7 @@ void	ServerManager::acceptNewClient(int pfds_pos)
 		handleInitOrAcceptError(client_fd, "accept client failed: " + std::string(strerror(errno)));
 	if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
 			handleInitOrAcceptError(client_fd, "fcntl failed: " + std::string(strerror(errno)));
-	Client	newClient(_servers[pfds_pos], client_fd, addr);
+	Client	newClient(client_fd, addr, _servers[pfds_pos]);
 	_clients.insert(std::make_pair(client_fd, newClient));
 	struct pollfd pfd = {};
 	pfd.fd = client_fd;
@@ -159,12 +159,11 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 void	ServerManager::handleClientResponse(size_t& pfds_pos)
 {
 	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
-	(void)it;
-	// if (it->second.getStatus() == Client::ERROR)
-	// {
-	// 	it->second.buildErrorResponse();
-	// 	handleClientError(pfds_pos, "change this ");
-	// }
+	if (it->second.getStatus() == Client::ERROR)
+	{
+		it->second.buildErrorResponse();
+		handleClientError(pfds_pos, "change this ");
+	}
 }
 
 void	ServerManager::handleClientError(int pfds_pos, const std::string& msg)
