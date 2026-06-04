@@ -36,13 +36,15 @@ class Client
 		void	receiveHeader(const std::string& request);
 		void	receiveBody(const std::string& request);
 
+	// Not copyable
+		Client(const Client& other);
+		Client& operator=(const Client& other);
+
 	public:
 	// Constants
 		static const int	MAX_HEADER_SIZE = 8192;
 	// Constructor and Destructor
 		Client(int fd, struct sockaddr_in& addr, ServerConfig& server);
-		Client(const Client& other);
-		Client& operator=(const Client& other);
 		~Client();
 	// Getters
 		int					getClientSocket() const;
