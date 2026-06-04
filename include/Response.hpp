@@ -17,19 +17,20 @@ class Response
 		std::string	_full_response; 
 	// Generate default error page
 		void	generateDefaultErrorPage();
+	// Setters
+		void	setFirstLine();
+		void	setErrorBody(const ServerConfig& server);
+		void	setHeaders();
+		void	setFullResponse();
 
 	public:
 	// Constructor and Destructor
 		Response();
 		~Response();
-	// Setter
+	// Setters
 		void	setCodeStatus(int code);
 		void	setStatusPhrase(const std::string& phrase);
-		void	setFirstLine();
-		void	setErrorBody(const ServerConfig& server);
-		void	setHeaders();
-		void	setFullResponse();
-	// Getter
+	// Getters
 		const std::string&	getFirstLine() const;
 		const std::string&	getBody() const;
 		const std::string&	getHeaders() const;

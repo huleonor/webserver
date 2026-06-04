@@ -10,6 +10,8 @@ Response::~Response() {}
 /* --------------------------------- Setter --------------------------------- */
 void	Response::setCodeStatus(int code)	{ _status_code = code; }
 void	Response::setStatusPhrase(const std::string& phrase)	{ _status_phrase = phrase; }
+void	Response::setFullResponse()	{ _full_response = _first_line + _headers + _body; }
+
 void	Response::setFirstLine()
 {
 	std::ostringstream	oss;
@@ -17,6 +19,7 @@ void	Response::setFirstLine()
 	oss << "HTTP/1.1 " << _status_code << " " << _status_phrase << "\r\n";
 	_first_line = oss.str();
 }
+
 void	Response::setErrorBody(const ServerConfig& server)
 {
 	const std::map<int, std::string>& error_pages = server.getErrorPages();
@@ -26,7 +29,7 @@ void	Response::setErrorBody(const ServerConfig& server)
 		generateDefaultErrorPage();
 		return ;
 	}
-	std::string	full_path = server.getRoot() + it->second;
+	std::string		full_path = server.getRoot() + it->second;
 	std::ifstream	file(full_path.c_str());
 	if (!file.is_open())
 	{
@@ -43,11 +46,6 @@ void	Response::setHeaders()
 
 	oss << "Content-Type: text/html\r\n" << "Content-Length: " << _body.size() << "\r\n" << "\r\n";
 	_headers = oss.str();
-}
-
-void	Response::setFullResponse()
-{
-	_full_response = _first_line + _headers + _body;
 }
 
 /* --------------------------------- Getters --------------------------------- */

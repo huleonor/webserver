@@ -16,38 +16,49 @@ class Client
 			READING_HEADER,
 			READING_BODY,
 			WRITING,
-			ERROR
+			ERROR,
+			CLOSE
 		};
 	private:
-	// Attribues
+	// Attributes
 		int				_client_socket;
-		std::string		_request_buffer;
-		HttpRequest 	_request;
-		size_t			_content_length;
-		ServerConfig&	_server;
 		in_addr_t		_client_addr;
 		in_port_t		_client_port;
+		ServerConfig*	_server;
+		std::string		_request_buffer;
+		HttpRequest		_request;
+		size_t			_content_length;
 		Status			_status;
 		Response		_response;
+		ssize_t			_bytes_sent;
+
+	// Request Handling
+		void	receiveHeader(const std::string& request);
+		void	receiveBody(const std::string& request);
 
 	public:
 	// Constants
 		static const int	MAX_HEADER_SIZE = 8192;
 	// Constructor and Destructor
-		Client(ServerConfig& server, int fd, struct sockaddr_in& addr);
+		Client(int fd, struct sockaddr_in& addr, ServerConfig& server);
+		Client(const Client& other);
+		Client& operator=(const Client& other);
 		~Client();
 	// Getters
-		int			getClientSocket() const;
-		in_port_t	getClientPort() const;
-		in_addr_t	getClientAddr() const;
-		Status		getStatus() const;
+		int					getClientSocket() const;
+		in_port_t			getClientPort() const;
+		in_addr_t			getClientAddr() const;
+		Status				getStatus() const;
+		const std::string&	getResponse() const;
+		ssize_t				getBytesSent() const;
 	// Setters
 		void		setStatus(Status status);
+		void		setBytesSent(ssize_t n);
 	// Response
-		void	buildErrorResponse();
+		void	buildErrorResponse(int code, const std::string& phrase);
+		void	sendResponse();
 	// Request Handling
-		void	receiveHeader(const std::string& request);
-		void	receiveBody(const std::string& request);
+		ssize_t	receiveData();
 };
 
 #endif

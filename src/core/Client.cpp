@@ -2,46 +2,114 @@
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
+#include <cerrno>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
-Client::Client(ServerConfig& server, int fd, struct sockaddr_in& addr)
+Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
     : _client_socket(fd),
+      _client_addr(addr.sin_addr.s_addr),
+      _client_port(addr.sin_port),
+      _server(&server),
       _request_buffer(),
       _request(),
       _content_length(0),
-      _server(server),
-      _client_addr(addr.sin_addr.s_addr),
-      _client_port(addr.sin_port),
-      _status(READING_HEADER)
+      _status(READING_HEADER),
+      _bytes_sent(0)
 {
 }
 
-Client::~Client() {};
+Client::Client(const Client& other)
+    : _client_socket(other._client_socket),
+      _client_addr(other._client_addr),
+      _client_port(other._client_port),
+      _server(other._server),
+      _request_buffer(other._request_buffer),
+      _request(other._request),
+      _content_length(other._content_length),
+      _status(other._status),
+      _response(other._response),
+      _bytes_sent(other._bytes_sent)
+{
+}
+
+Client& Client::operator=(const Client& other)
+{
+	if (this != &other)
+	{
+		_client_socket = other._client_socket;
+		_client_addr = other._client_addr;
+		_client_port = other._client_port;
+		_server = other._server;
+		_request_buffer = other._request_buffer;
+		_request = other._request;
+		_content_length = other._content_length;
+		_status = other._status;
+		_response = other._response;
+		_bytes_sent = other._bytes_sent;
+	}
+	return *this;
+}
+
+Client::~Client() {}
 
 /* --------------------------------- Getters -------------------------------- */
-int					Client::getClientSocket() const { return _client_socket; }
-in_port_t			Client::getClientPort() const  { return _client_port; }
-in_addr_t			Client::getClientAddr() const  { return _client_addr; }
-Client::Status		Client::getStatus() const { return _status; }
+int					Client::getClientSocket() const	{ return (_client_socket); }
+in_port_t			Client::getClientPort() const	{ return (_client_port); }
+in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
+Client::Status		Client::getStatus() const		{ return (_status); }
+const std::string&	Client::getResponse() const		{ return (_response.getFullResponse()); }
+ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
 
 /* --------------------------------- Setters -------------------------------- */
 void	Client::setStatus(Status status)	{ _status = status; }
+void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
 
 /* -------------------------------- Response -------------------------------- */
-void	Client::buildErrorResponse()
+void	Client::buildErrorResponse(int code, const std::string& phrase)
 {
-	_response.buildError(_server);
-	std::cout << _response.getFullResponse() << std::endl; //// delete
+	_response.setCodeStatus(code);
+	_response.setStatusPhrase(phrase);
+	_response.buildError(*_server);
 }
 
-/* --------------------------------- Request Handling -------------------------------- */
+void	Client::sendResponse()
+{
+	_status = WRITING;
+	size_t		responseSize = _response.getFullResponse().size();
+	size_t		bufferSize = responseSize - _bytes_sent;
+	const char*	buff = _response.getFullResponse().c_str() + _bytes_sent;
+	ssize_t		n = send(_client_socket, buff, bufferSize, 0);
+	if (n == -1)
+	{
+		_status = ERROR;
+		return ;
+	}
+	if ((size_t)(_bytes_sent += n) >= responseSize)
+		_status = CLOSE;
+}
+
+/* --------------------------------- Request Handling ----------------------- */
+ssize_t	Client::receiveData()
+{
+	char	buffer[4096] = {0};
+	ssize_t	n = recv(_client_socket, buffer, sizeof(buffer), 0);
+
+	if (n > 0)
+	{
+		if (_status == READING_HEADER)
+			receiveHeader(std::string(buffer, n));
+		else
+			receiveBody(std::string(buffer, n));
+	}
+	return (n);
+}
+
 void	Client::receiveHeader(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
 	{
+		buildErrorResponse(400, "Request Header Or Cookie Too Large");
 		_status = ERROR;
-		_response.setCodeStatus(400);
-		_response.setStatusPhrase("Request Header Or Cookie Too Large");
 		return ;
 	}
 	_request_buffer.append(request);
@@ -50,29 +118,23 @@ void	Client::receiveHeader(const std::string& request)
 	{
 		std::string	header = _request_buffer.substr(0, pos);
 		_request_buffer.erase(0, pos + 4);
-		std::cout << "\033[32mClient: " << _client_addr << ":" << _client_port
-			<< " | header received\033[0m" << std::endl;
 		_request.parse(header);
 		if (_request.error_code != 0)
 		{
-			_status = ERROR;
-			_response.setCodeStatus(_request.error_code);
 			if (_request.error_code == 501)
-				_response.setStatusPhrase("Not Implemented");
+				buildErrorResponse(501, "Not Implemented");
 			else if (_request.error_code == 414)
-				_response.setStatusPhrase("URI Too Long");
+				buildErrorResponse(414, "URI Too Long");
 			else
-				_response.setStatusPhrase("Bad Request");
+				buildErrorResponse(400, "Bad Request");
+			_status = ERROR;
 			return ;
 		}
 		if (_request.headers.count("content-length"))
 		{
 			std::istringstream ss(_request.headers["content-length"]);
 			ss >> _content_length;
-			if (_content_length > 0)
-				_status = READING_BODY;
-			else
-				_status = WRITING;
+			_status = (_content_length > 0) ? READING_BODY : WRITING;
 		}
 		else if (_request.headers.count("transfer-encoding"))
 			_status = READING_BODY;
@@ -83,11 +145,10 @@ void	Client::receiveHeader(const std::string& request)
 
 void	Client::receiveBody(const std::string& request)
 {
-	if (_request_buffer.size() + request.size() > _server.getClientMaxBodySize())
+	if (_request_buffer.size() + request.size() > _server->getClientMaxBodySize())
 	{
+		buildErrorResponse(413, "Content Too Large");
 		_status = ERROR;
-		_response.setCodeStatus(413);
-		_response.setStatusPhrase("Content Too Large");
 		return ;
 	}
 	_request_buffer.append(request);

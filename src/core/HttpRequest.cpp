@@ -3,6 +3,31 @@
 #include <cctype>
 
 HttpRequest::HttpRequest() : error_code(0) {}
+
+HttpRequest::HttpRequest(const HttpRequest& other)
+    : method(other.method),
+      path(other.path),
+      query_string(other.query_string),
+      version(other.version),
+      headers(other.headers),
+      body(other.body),
+      error_code(other.error_code) {}
+
+HttpRequest& HttpRequest::operator=(const HttpRequest& other)
+{
+	if (this != &other)
+	{
+		method = other.method;
+		path = other.path;
+		query_string = other.query_string;
+		version = other.version;
+		headers = other.headers;
+		body = other.body;
+		error_code = other.error_code;
+	}
+	return *this;
+}
+
 HttpRequest::~HttpRequest() {}
 
 static void	trimLeft(std::string& str)

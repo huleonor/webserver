@@ -16,6 +16,8 @@ public:
 	int									error_code;
 
 	HttpRequest();
+	HttpRequest(const HttpRequest& other);
+	HttpRequest& operator=(const HttpRequest& other);
 	~HttpRequest();
 	void	parse(const std::string& header);
 };
