@@ -19,7 +19,7 @@ OBJ_DIR  = obj
 
 SRC      = src/core/main.cpp src/parser/ConfigParser.cpp src/parser/ConfigParserDirectives.cpp \
 		src/parser/ConfigParserUtils.cpp src/parser/Location.cpp src/parser/ServerConfig.cpp \
-		src/core/ServerManager.cpp src/core/Client.cpp src/core/Response.cpp
+		src/core/ServerManager.cpp src/core/Client.cpp src/core/Response.cpp src/core/HttpRequest.cpp
 OBJS     = $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 TOTAL_FILE = $(words $(SRC))
 

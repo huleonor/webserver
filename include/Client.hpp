@@ -6,6 +6,7 @@
 #include <map>
 #include "ServerConfig.hpp"
 #include "Response.hpp"
+#include "HttpRequest.hpp"
 
 class Client
 {
@@ -18,18 +19,11 @@ class Client
 			ERROR
 		};
 	private:
-		struct HttpRequest 
-		{
-			std::string	method;
-			std::string	path;
-			std::string	query_string;
-			std::string version;
-			std::map<std::string, std::string>	headers;
-    	};
 	// Attribues
 		int				_client_socket;
 		std::string		_request_buffer;
 		HttpRequest 	_request;
+		size_t			_content_length;
 		ServerConfig&	_server;
 		in_addr_t		_client_addr;
 		in_port_t		_client_port;
