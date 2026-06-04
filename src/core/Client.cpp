@@ -18,6 +18,38 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
 {
 }
 
+Client::Client(const Client& other)
+    : _client_socket(other._client_socket),
+      _client_addr(other._client_addr),
+      _client_port(other._client_port),
+      _server(other._server),
+      _request_buffer(other._request_buffer),
+      _request(other._request),
+      _content_length(other._content_length),
+      _status(other._status),
+      _response(other._response),
+      _bytes_sent(other._bytes_sent)
+{
+}
+
+Client& Client::operator=(const Client& other)
+{
+	if (this != &other)
+	{
+		_client_socket = other._client_socket;
+		_client_addr = other._client_addr;
+		_client_port = other._client_port;
+		_server = other._server;
+		_request_buffer = other._request_buffer;
+		_request = other._request;
+		_content_length = other._content_length;
+		_status = other._status;
+		_response = other._response;
+		_bytes_sent = other._bytes_sent;
+	}
+	return *this;
+}
+
 Client::~Client() {}
 
 /* --------------------------------- Getters -------------------------------- */
