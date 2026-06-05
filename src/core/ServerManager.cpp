@@ -111,7 +111,6 @@ void	ServerManager::monitorClients()
 	}
 }
 
-
 void	ServerManager::handleEvent()
 {
 	for (size_t i = 0; i < _pfds.size(); i++)

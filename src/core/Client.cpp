@@ -23,6 +23,11 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
 
 Client::~Client() { close(_client_socket); }
 
+/* --------------------------------- Setters -------------------------------- */
+void	Client::setStatus(Status status)	{ _status = status; }
+void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
+void	Client::setLastTimeActivity(time_t time)	{ _last_time_activity = time; }
+
 /* --------------------------------- Getters -------------------------------- */
 int					Client::getClientSocket() const	{ return (_client_socket); }
 in_port_t			Client::getClientPort() const	{ return (_client_port); }
@@ -31,11 +36,6 @@ Client::Status		Client::getStatus() const		{ return (_status); }
 const std::string&	Client::getResponse() const		{ return (_response.getFullResponse()); }
 ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
 time_t				Client::getLastTimeActivity() const { return (_last_time_activity); }
-
-/* --------------------------------- Setters -------------------------------- */
-void	Client::setStatus(Status status)	{ _status = status; }
-void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
-void	Client::setLastTimeActivity(time_t time)	{ _last_time_activity = time; }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::buildErrorResponse(int code, const std::string& phrase)
