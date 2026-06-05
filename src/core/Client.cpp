@@ -14,6 +14,7 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
       _request_buffer(),
       _request(),
       _content_length(0),
+      _chunked(false),
       _status(READING_HEADER),
       _bytes_sent(0),
 	  _last_time_activity(time(NULL))
@@ -109,7 +110,10 @@ void	Client::receiveHeader(const std::string& request)
 			_status = (_content_length > 0) ? READING_BODY : WRITING;
 		}
 		else if (_request.headers.count("transfer-encoding"))
+		{
+			_chunked = true;
 			_status = READING_BODY;
+		}
 		else
 			_status = WRITING;
 	}
@@ -124,9 +128,36 @@ void	Client::receiveBody(const std::string& request)
 		return ;
 	}
 	_request_buffer.append(request);
-	if (_request_buffer.size() >= _content_length)
+	if (!_chunked)
 	{
-		_request.body = _request_buffer.substr(0, _content_length);
-		_status = WRITING;
+		if (_request_buffer.size() >= _content_length)
+		{
+			_request.body = _request_buffer.substr(0, _content_length);
+			_status = WRITING;
+		}
+		return ;
+	}
+	// chunked transfer encoding
+	while (!_request_buffer.empty())
+	{
+		size_t pos = _request_buffer.find("\r\n");
+		if (pos == std::string::npos)
+			return ;
+		size_t chunk_size;
+		std::istringstream ss(_request_buffer.substr(0, pos));
+		ss >> std::hex >> chunk_size;
+		if (chunk_size == 0)
+		{
+			_status = WRITING;
+			// tmp: verify chunked body was assembled correctly
+			std::cout << "[DEBUG] chunked body complete: \"" << _request.body << "\"" << std::endl;
+			return ;
+		}
+		if (_request_buffer.size() < pos + 2 + chunk_size + 2)
+			return ;
+		_request.body += _request_buffer.substr(pos + 2, chunk_size);
+		// tmp: print each chunk as it's extracted
+		std::cout << "[DEBUG] chunk extracted: \"" << _request_buffer.substr(pos + 2, chunk_size) << "\"" << std::endl;
+		_request_buffer.erase(0, pos + 2 + chunk_size + 2);
 	}
 }
