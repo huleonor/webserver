@@ -78,7 +78,7 @@ void	Client::receiveHeader(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
 	{
-		buildErrorResponse(404, "Request Header Or Cookie Too Large");
+		buildErrorResponse(400, "Request Header Or Cookie Too Large");
 		_status = ERROR;
 		return ;
 	}
