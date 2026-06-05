@@ -37,8 +37,8 @@ class Client
 
 	public:
 	// Constants
-		// static const int	MAX_HEADER_SIZE = 8192;
-		static const int	MAX_HEADER_SIZE = 8;
+		static const int	MAX_HEADER_SIZE = 8192;
+		// static const int	MAX_HEADER_SIZE = 8;
 	// Constructor and Destructor
 		Client(int fd, struct sockaddr_in& addr, ServerConfig& server);
 		~Client();
