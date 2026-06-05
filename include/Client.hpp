@@ -30,6 +30,7 @@ private:
 	std::string		_request_buffer;
 	HttpRequest		_request;
 	size_t			_content_length;
+	bool			_chunked;
 	Status			_status;
 	Response		_response;
 	ssize_t			_bytes_sent;
