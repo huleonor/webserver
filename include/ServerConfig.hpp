@@ -21,7 +21,10 @@ private:
 	int                        _socket_fd;
 
 public:
+	// Lifecycle
 	ServerConfig();
+	ServerConfig(const ServerConfig& other);
+	ServerConfig& operator=(const ServerConfig& other);
 	~ServerConfig();
 	uint16_t                          	getPort() const;
 	const std::string&					getHost() const;

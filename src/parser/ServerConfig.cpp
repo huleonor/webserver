@@ -10,6 +10,34 @@ ServerConfig::ServerConfig()
       _socket_fd(-1)
 {
 }
+ServerConfig::ServerConfig(const ServerConfig& other)
+	: _port(other._port),
+	  _host(other._host),
+	  _server_name(other._server_name),
+	  _root(other._root),
+	  _index(other._index),
+	  _client_max_body_size(other._client_max_body_size),
+	  _error_pages(other._error_pages),
+	  _locations(other._locations),
+	  _socket_fd(other._socket_fd) {}
+
+ServerConfig& ServerConfig::operator=(const ServerConfig& other)
+{
+	if (this != &other)
+	{
+		_port = other._port;
+		_host = other._host;
+		_server_name = other._server_name;
+		_root = other._root;
+		_index = other._index;
+		_client_max_body_size = other._client_max_body_size;
+		_error_pages = other._error_pages;
+		_locations = other._locations;
+		_socket_fd = other._socket_fd;
+	}
+	return *this;
+}
+
 ServerConfig::~ServerConfig() {}
 
 uint16_t                   ServerConfig::getPort() const           { return _port; }

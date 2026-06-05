@@ -3,31 +3,6 @@
 #include <cctype>
 
 HttpRequest::HttpRequest() : error_code(0) {}
-
-HttpRequest::HttpRequest(const HttpRequest& other)
-    : method(other.method),
-      path(other.path),
-      query_string(other.query_string),
-      version(other.version),
-      headers(other.headers),
-      body(other.body),
-      error_code(other.error_code) {}
-
-HttpRequest& HttpRequest::operator=(const HttpRequest& other)
-{
-	if (this != &other)
-	{
-		method = other.method;
-		path = other.path;
-		query_string = other.query_string;
-		version = other.version;
-		headers = other.headers;
-		body = other.body;
-		error_code = other.error_code;
-	}
-	return *this;
-}
-
 HttpRequest::~HttpRequest() {}
 
 static void	trimLeft(std::string& str)
@@ -58,7 +33,6 @@ void	HttpRequest::parse(const std::string& header)
 	if (!line.empty() && line[line.size() - 1] == '\r')
 		line.erase(line.size() - 1);
 
-	// Parse request line: METHOD URI VERSION
 	size_t pos1 = line.find(' ');
 	size_t pos2 = line.rfind(' ');
 	if (pos1 == std::string::npos || pos1 == pos2)
@@ -86,7 +60,6 @@ void	HttpRequest::parse(const std::string& header)
 		return ;
 	}
 
-	// Split URI into path and query_string
 	size_t qpos = uri.find('?');
 	if (qpos != std::string::npos)
 	{
@@ -96,7 +69,6 @@ void	HttpRequest::parse(const std::string& header)
 	else
 		path = uri;
 
-	// Parse headers
 	while (std::getline(stream, line))
 	{
 		if (!line.empty() && line[line.size() - 1] == '\r')

@@ -12,7 +12,16 @@
 #include <algorithm>
 
 /* ---------------------------- Member Attributes --------------------------- */
-bool						ServerManager::_running = true;
+bool	ServerManager::_running = true;
+
+/* ----------------------- Constructor and Destructor ----------------------- */
+ServerManager::ServerManager() {}
+
+ServerManager::~ServerManager()
+{
+	for (client_it it = _clients.begin(); it != _clients.end(); it++)
+		delete it->second;
+}
 
 /* ----------------------------- Error handling ----------------------------- */
 void	ServerManager::handleInitOrAcceptError(int fd, const std::string& msg)
@@ -120,8 +129,7 @@ void	ServerManager::acceptNewClient(size_t pfds_pos)
 			break;
 		if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
 			handleInitOrAcceptError(client_fd, "fcntl failed: " + std::string(strerror(errno)));
-		Client	newClient(client_fd, addr, _servers[pfds_pos]);
-		_clients.insert(std::make_pair(client_fd, newClient));
+		_clients.insert(std::make_pair(client_fd, new Client(client_fd, addr, _servers[pfds_pos])));
 		struct pollfd pfd = {};
 		pfd.fd = client_fd;
 		pfd.events = POLLIN;
@@ -137,27 +145,27 @@ void	ServerManager::acceptNewClient(size_t pfds_pos)
 void	ServerManager::handleClientRequest(size_t& pfds_pos)
 {
 	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
-	ssize_t	n = it->second.receiveData();
+	ssize_t	n = it->second->receiveData();
 
 	if (n == -1)
 		closeConnection(pfds_pos, "recv failed: " + std::string(strerror(errno)));
 	else if (n == 0)
 		closeConnection(pfds_pos, "");
-	else if (it->second.getStatus() == Client::ERROR)
+	else if (it->second->getStatus() == Client::ERROR)
 		_pfds[pfds_pos].events = POLLOUT;
 }
 
 void	ServerManager::handleClientResponse(size_t& pfds_pos)
 {
 	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
-	it->second.sendResponse();
+	it->second->sendResponse();
 	std::string	msg = "";
-	if (it->second.getStatus() == Client::ERROR)
+	if (it->second->getStatus() == Client::ERROR)
 	{
 		msg = "send failed: " + std::string(strerror(errno));
-		it->second.setStatus(Client::CLOSE);
+		it->second->setStatus(Client::CLOSE);
 	}
-	if (it->second.getStatus() == Client::CLOSE)
+	if (it->second->getStatus() == Client::CLOSE)
 		closeConnection(pfds_pos, msg);
 }
 
@@ -166,11 +174,11 @@ void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
 	struct	in_addr	tmp;
 	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
 
-	tmp.s_addr = it->second.getClientAddr();
+	tmp.s_addr = it->second->getClientAddr();
 	std::string	addr = inet_ntoa(tmp);
-	int	port = ntohs(it->second.getClientPort());
+	int	port = ntohs(it->second->getClientPort());
+	delete it->second;
 	_clients.erase(_pfds[pfds_pos].fd);
-	close(_pfds[pfds_pos].fd);
 	_pfds.erase(_pfds.begin() + pfds_pos);
 	pfds_pos--;
 	std::cout << "\033[31m[INFO]: " <<  addr << ":" 

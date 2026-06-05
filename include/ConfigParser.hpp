@@ -17,6 +17,9 @@ class ConfigParser
 private:
 	std::vector<std::string> _lines;
 	std::string readFile(const std::string &filepath);
+// Non-copyable (stateless utility — no reason to copy)
+	ConfigParser(const ConfigParser& copy);
+	ConfigParser&	operator=(const ConfigParser& copy);
 public:
 	ConfigParser();
 	~ConfigParser();

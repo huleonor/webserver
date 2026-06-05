@@ -5,6 +5,29 @@
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Response::Response() : _status_code(0) {}
+
+Response::Response(const Response& other)
+	: _status_code(other._status_code),
+	  _status_phrase(other._status_phrase),
+	  _first_line(other._first_line),
+	  _headers(other._headers),
+	  _body(other._body),
+	  _full_response(other._full_response) {}
+
+Response& Response::operator=(const Response& other)
+{
+	if (this != &other)
+	{
+		_status_code = other._status_code;
+		_status_phrase = other._status_phrase;
+		_first_line = other._first_line;
+		_headers = other._headers;
+		_body = other._body;
+		_full_response = other._full_response;
+	}
+	return *this;
+}
+
 Response::~Response() {}
 
 /* --------------------------------- Setter --------------------------------- */
@@ -68,6 +91,6 @@ void	Response::generateDefaultErrorPage()
 {
 	std::ostringstream	oss;
 
-	oss << "<html><body><h1>" <<  _status_code << " " << _status_phrase << "</h1></body></html>";
+	oss << "<html><body><h1>" <<  _status_code << " " << _status_phrase << "</h1></body></html>\n";
 	_body = oss.str();
 }

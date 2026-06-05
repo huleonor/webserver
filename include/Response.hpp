@@ -7,37 +7,37 @@
 
 class Response
 {
-	private:
-	// Attribute
-		int			_status_code;
-		std::string	_status_phrase;
-		std::string	_first_line;
-		std::string	_headers;
-		std::string	_body;
-		std::string	_full_response; 
-	// Generate default error page
-		void	generateDefaultErrorPage();
-	// Setters
-		void	setFirstLine();
-		void	setErrorBody(const ServerConfig& server);
-		void	setHeaders();
-		void	setFullResponse();
-
-	public:
-	// Constructor and Destructor
-		Response();
-		~Response();
-	// Setters
-		void	setCodeStatus(int code);
-		void	setStatusPhrase(const std::string& phrase);
-	// Getters
-		const std::string&	getFirstLine() const;
-		const std::string&	getBody() const;
-		const std::string&	getHeaders() const;
-		const std::string&	getFullResponse() const;
-
-	// Build Response
-		void	buildError(const ServerConfig& server);
+private:
+// Attribute
+	int			_status_code;
+	std::string	_status_phrase;
+	std::string	_first_line;
+	std::string	_headers;
+	std::string	_body;
+	std::string	_full_response; 
+// Generate default error page
+	void	generateDefaultErrorPage();
+// Setters
+	void	setFirstLine();
+	void	setErrorBody(const ServerConfig& server);
+	void	setHeaders();
+	void	setFullResponse();
+public:
+// Lifecycle
+	Response();
+	Response(const Response& other);
+	Response& operator=(const Response& other);
+	~Response();
+// Setters
+	void	setCodeStatus(int code);
+	void	setStatusPhrase(const std::string& phrase);
+// Getters
+	const std::string&	getFirstLine() const;
+	const std::string&	getBody() const;
+	const std::string&	getHeaders() const;
+	const std::string&	getFullResponse() const;
+// Build Response
+	void	buildError(const ServerConfig& server);
 };
 
 #endif

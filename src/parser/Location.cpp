@@ -1,6 +1,35 @@
 #include "../../include/Location.hpp"
 
 Location::Location() : _autoindex(false) {}
+
+Location::Location(const Location& other)
+	: _path(other._path),
+	  _root(other._root),
+	  _index(other._index),
+	  _autoindex(other._autoindex),
+	  _allow_methods(other._allow_methods),
+	  _return(other._return),
+	  _cgi_ext(other._cgi_ext),
+	  _cgi_path(other._cgi_path),
+	  _upload_path(other._upload_path) {}
+
+Location& Location::operator=(const Location& other)
+{
+	if (this != &other)
+	{
+		_path = other._path;
+		_root = other._root;
+		_index = other._index;
+		_autoindex = other._autoindex;
+		_allow_methods = other._allow_methods;
+		_return = other._return;
+		_cgi_ext = other._cgi_ext;
+		_cgi_path = other._cgi_path;
+		_upload_path = other._upload_path;
+	}
+	return *this;
+}
+
 Location::~Location() {}
 
 std::string              Location::getPath() const         { return _path; }

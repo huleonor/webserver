@@ -4,9 +4,8 @@
 #include <string>
 #include <map>
 
-class HttpRequest
+struct HttpRequest
 {
-public:
 	std::string							method;
 	std::string							path;
 	std::string							query_string;
@@ -16,8 +15,6 @@ public:
 	int									error_code;
 
 	HttpRequest();
-	HttpRequest(const HttpRequest& other);
-	HttpRequest& operator=(const HttpRequest& other);
 	~HttpRequest();
 	void	parse(const std::string& header);
 };

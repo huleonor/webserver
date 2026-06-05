@@ -18,7 +18,10 @@ private:
 	std::string              _upload_path;
 
 public:
+	// Lifecycle
 	Location();
+	Location(const Location& other);
+	Location& operator=(const Location& other);
 	~Location();
 
 	std::string              getPath() const;
