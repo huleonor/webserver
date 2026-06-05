@@ -134,7 +134,6 @@ void	Client::receiveBody(const std::string& request)
 		{
 			_request.body = _request_buffer.substr(0, _content_length);
 			_status = WRITING;
-			std::cout << "Test body: " << _request.body << std::endl;
 			return ;
 		}
 	}
