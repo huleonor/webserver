@@ -71,7 +71,7 @@ ssize_t	Client::receiveData()
 	{
 		if (_status == READING_HEADER)
 			receiveHeader(std::string(buffer, n));
-		if (_status == READING_BODY)
+		else if (_status == READING_BODY)
 			receiveBody(std::string(buffer, n));
 	}
 	return (n);
@@ -134,8 +134,9 @@ void	Client::receiveBody(const std::string& request)
 		{
 			_request.body = _request_buffer.substr(0, _content_length);
 			_status = WRITING;
+			std::cout << "Test body: " << _request.body << std::endl;
+			return ;
 		}
-		return ;
 	}
 	// chunked transfer encoding
 	while (!_request_buffer.empty())
