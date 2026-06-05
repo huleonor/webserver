@@ -28,6 +28,7 @@ private:
 // Runtime
 	void	handleEvent();
 	bool	isServerSocket(size_t pos);
+	void	monitorClients();
 
 public:
 // Types

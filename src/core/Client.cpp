@@ -15,7 +15,8 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
       _request(),
       _content_length(0),
       _status(READING_HEADER),
-      _bytes_sent(0)
+      _bytes_sent(0),
+	  _last_time_activity(time(NULL))
 {
 }
 
@@ -28,10 +29,12 @@ in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
 Client::Status		Client::getStatus() const		{ return (_status); }
 const std::string&	Client::getResponse() const		{ return (_response.getFullResponse()); }
 ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
+time_t				Client::getLastTimeActivity() const { return (_last_time_activity); }
 
 /* --------------------------------- Setters -------------------------------- */
 void	Client::setStatus(Status status)	{ _status = status; }
 void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
+void	Client::setLastTimeActivity(time_t time)	{ _last_time_activity = time; }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::buildErrorResponse(int code, const std::string& phrase)

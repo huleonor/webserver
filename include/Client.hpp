@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <string>
 #include <map>
+#include <ctime>
 #include "ServerConfig.hpp"
 #include "Response.hpp"
 #include "HttpRequest.hpp"
@@ -33,6 +34,7 @@ private:
 	Status			_status;
 	Response		_response;
 	ssize_t			_bytes_sent;
+	time_t			_last_time_activity;
 // Non-copyable (owns a unique socket fd)
 	Client(const Client& other);
 	Client&	operator=(const Client& other);
@@ -53,9 +55,11 @@ public:
 	Status				getStatus() const;
 	const std::string&	getResponse() const;
 	ssize_t				getBytesSent() const;
+	time_t				getLastTimeActivity() const;
 // Setters
 	void				setStatus(Status status);
 	void				setBytesSent(ssize_t n);
+	void				setLastTimeActivity(time_t time);
 // Response
 	void				buildErrorResponse(int code, const std::string& phrase);
 	void				sendResponse();

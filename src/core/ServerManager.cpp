@@ -88,12 +88,29 @@ void	ServerManager::start()
 {
 	while(_running)
 	{
-		int	num_events = poll(&_pfds[0], _pfds.size(), 5000);
-		// if (num_events == -1)
+		int	num_events = poll(&_pfds[0], _pfds.size(), 60000);
+		if (num_events == -1)
+		{
+			if (errno == EINTR)
+				continue;
+			throw std::runtime_error("poll failed "  + std::string(strerror(errno)));
+		}
+		monitorClients();
 		if (num_events > 0)
 			handleEvent();
 	}
 }
+
+void	ServerManager::monitorClients()
+{
+	for (size_t i = _servers.size(); i < _pfds.size(); i++)
+	{
+		client_it	it = _clients.find(_pfds[i].fd);
+		if (time(NULL) - it->second->getLastTimeActivity() > 60)
+			closeConnection(i, "");
+	}
+}
+
 
 void	ServerManager::handleEvent()
 {
@@ -146,7 +163,8 @@ void	ServerManager::acceptNewClient(size_t pfds_pos)
 
 void	ServerManager::handleClientRequest(size_t& pfds_pos)
 {
-	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	it->second->setLastTimeActivity(time(NULL));
 	ssize_t	n = it->second->receiveData();
 
 	if (n == -1)
@@ -159,7 +177,7 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 
 void	ServerManager::handleClientResponse(size_t& pfds_pos)
 {
-	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	client_it	it = _clients.find(_pfds[pfds_pos].fd);
 	it->second->sendResponse();
 	std::string	msg = "";
 	if (it->second->getStatus() == Client::ERROR)
@@ -174,7 +192,7 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
 {
 	struct	in_addr	tmp;
-	ServerManager::client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	client_it	it = _clients.find(_pfds[pfds_pos].fd);
 
 	tmp.s_addr = it->second->getClientAddr();
 	std::string	addr = inet_ntoa(tmp);
@@ -194,6 +212,7 @@ void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
 void	ServerManager::handleSignal(int sig)
 {
 	(void)sig;
+	std::cout << std::endl;
 	_running = false;
 }
 
