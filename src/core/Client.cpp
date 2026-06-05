@@ -1,41 +1,75 @@
 #include "../../include/Client.hpp"
-#include <stdexcept> 
+#include <stdexcept>
 #include <iostream>
-#include <cerrno>  
+#include <sstream>
+#include <cerrno>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
-    : _client_socket(fd),           
-	_client_addr(addr.sin_addr.s_addr), 
-	_client_port(addr.sin_port),
-	_server(server),             
-    _request_buffer(),                       
-    _request(),
-	_status(READING_HEADER),                   
-	_bytes_sent(0)
+    : _client_socket(fd),
+      _client_addr(addr.sin_addr.s_addr),
+      _client_port(addr.sin_port),
+      _server(&server),
+      _request_buffer(),
+      _request(),
+      _content_length(0),
+      _status(READING_HEADER),
+      _bytes_sent(0)
 {
 }
 
-Client::~Client() {};
+Client::Client(const Client& other)
+    : _client_socket(other._client_socket),
+      _client_addr(other._client_addr),
+      _client_port(other._client_port),
+      _server(other._server),
+      _request_buffer(other._request_buffer),
+      _request(other._request),
+      _content_length(other._content_length),
+      _status(other._status),
+      _response(other._response),
+      _bytes_sent(other._bytes_sent)
+{
+}
+
+Client& Client::operator=(const Client& other)
+{
+	if (this != &other)
+	{
+		_client_socket = other._client_socket;
+		_client_addr = other._client_addr;
+		_client_port = other._client_port;
+		_server = other._server;
+		_request_buffer = other._request_buffer;
+		_request = other._request;
+		_content_length = other._content_length;
+		_status = other._status;
+		_response = other._response;
+		_bytes_sent = other._bytes_sent;
+	}
+	return *this;
+}
+
+Client::~Client() {}
+
+/* --------------------------------- Getters -------------------------------- */
+int					Client::getClientSocket() const	{ return (_client_socket); }
+in_port_t			Client::getClientPort() const	{ return (_client_port); }
+in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
+Client::Status		Client::getStatus() const		{ return (_status); }
+const std::string&	Client::getResponse() const		{ return (_response.getFullResponse()); }
+ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
 
 /* --------------------------------- Setters -------------------------------- */
 void	Client::setStatus(Status status)	{ _status = status; }
 void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
-
-/* --------------------------------- Getters -------------------------------- */
-int					Client::getClientSocket() const 	{ return (_client_socket); }
-in_port_t			Client::getClientPort() const  		{ return (_client_port); }
-in_addr_t			Client::getClientAddr() const  		{ return (_client_addr); }
-Client::Status		Client::getStatus() const			{ return (_status); }
-ssize_t				Client::getBytesSent() const		{ return (_bytes_sent); }
-const std::string&	Client::getResponse() const			{ return (_response.getFullResponse()); }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::buildErrorResponse(int code, const std::string& phrase)
 {
 	_response.setCodeStatus(code);
 	_response.setStatusPhrase(phrase);
-	_response.buildError(_server);
+	_response.buildError(*_server);
 }
 
 void	Client::sendResponse()
@@ -44,7 +78,7 @@ void	Client::sendResponse()
 	size_t		responseSize = _response.getFullResponse().size();
 	size_t		bufferSize = responseSize - _bytes_sent;
 	const char*	buff = _response.getFullResponse().c_str() + _bytes_sent;
-	ssize_t	n = send(_client_socket, buff, bufferSize, 0);
+	ssize_t		n = send(_client_socket, buff, bufferSize, 0);
 	if (n == -1)
 	{
 		_status = ERROR;
@@ -54,7 +88,7 @@ void	Client::sendResponse()
 		_status = CLOSE;
 }
 
-/* --------------------------------- Request Handling -------------------------------- */
+/* --------------------------------- Request Handling ----------------------- */
 ssize_t	Client::receiveData()
 {
 	char	buffer[4096] = {0};
@@ -74,8 +108,8 @@ void	Client::receiveHeader(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
 	{
-		_status = ERROR;
 		buildErrorResponse(400, "Request Header Or Cookie Too Large");
+		_status = ERROR;
 		return ;
 	}
 	_request_buffer.append(request);
@@ -84,13 +118,43 @@ void	Client::receiveHeader(const std::string& request)
 	{
 		std::string	header = _request_buffer.substr(0, pos);
 		_request_buffer.erase(0, pos + 4);
-		//// PARSING - Hugo needs to change status
+		_request.parse(header);
+		if (_request.error_code != 0)
+		{
+			if (_request.error_code == 501)
+				buildErrorResponse(501, "Not Implemented");
+			else if (_request.error_code == 414)
+				buildErrorResponse(414, "URI Too Long");
+			else
+				buildErrorResponse(400, "Bad Request");
+			_status = ERROR;
+			return ;
+		}
+		if (_request.headers.count("content-length"))
+		{
+			std::istringstream ss(_request.headers["content-length"]);
+			ss >> _content_length;
+			_status = (_content_length > 0) ? READING_BODY : WRITING;
+		}
+		else if (_request.headers.count("transfer-encoding"))
+			_status = READING_BODY;
+		else
+			_status = WRITING;
 	}
 }
 
 void	Client::receiveBody(const std::string& request)
 {
-	// if (_request_buffer.size() + request.size() > _server.getClientMaxBodySize())
-	// 	// send error page - to resolv
+	if (_request_buffer.size() + request.size() > _server->getClientMaxBodySize())
+	{
+		buildErrorResponse(413, "Content Too Large");
+		_status = ERROR;
+		return ;
+	}
 	_request_buffer.append(request);
+	if (_request_buffer.size() >= _content_length)
+	{
+		_request.body = _request_buffer.substr(0, _content_length);
+		_status = WRITING;
+	}
 }

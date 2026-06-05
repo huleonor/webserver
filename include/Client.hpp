@@ -20,13 +20,14 @@ class Client
 			CLOSE
 		};
 	private:
-	// Attribues
+	// Attributes
 		int				_client_socket;
 		in_addr_t		_client_addr;
 		in_port_t		_client_port;
-		ServerConfig&	_server;
+		ServerConfig*	_server;
 		std::string		_request_buffer;
-		HppRequest 		_request;
+		HttpRequest		_request;
+		size_t			_content_length;
 		Status			_status;
 		Response		_response;
 		ssize_t			_bytes_sent;
@@ -38,9 +39,10 @@ class Client
 	public:
 	// Constants
 		static const int	MAX_HEADER_SIZE = 8192;
-		// static const int	MAX_HEADER_SIZE = 8;
 	// Constructor and Destructor
 		Client(int fd, struct sockaddr_in& addr, ServerConfig& server);
+		Client(const Client& other);
+		Client& operator=(const Client& other);
 		~Client();
 	// Getters
 		int					getClientSocket() const;
