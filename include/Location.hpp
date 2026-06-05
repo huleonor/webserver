@@ -24,25 +24,25 @@ public:
 	Location& operator=(const Location& other);
 	~Location();
 
-	std::string              getPath() const;
-	std::string              getRoot() const;
-	std::string              getIndex() const;
-	bool                     getAutoindex() const;
-	std::vector<std::string> getAllowMethods() const;
-	std::string              getReturn() const;
-	std::vector<std::string> getCgiExt() const;
-	std::vector<std::string> getCgiPath() const;
-	std::string              getUploadPath() const;
+	std::string              	getPath() const;
+	std::string              	getRoot() const;
+	std::string              	getIndex() const;
+	bool                     	getAutoindex() const;
+	std::vector<std::string> 	getAllowMethods() const;
+	std::string              	getReturn() const;
+	std::vector<std::string> 	getCgiExt() const;
+	std::vector<std::string> 	getCgiPath() const;
+	std::string              	getUploadPath() const;
 
-	void setPath(const std::string &path);
-	void setRoot(const std::string &root);
-	void setIndex(const std::string &index);
-	void setAutoindex(bool autoindex);
-	void addAllowMethod(const std::string &method);
-	void setReturn(const std::string &redirect);
-	void addCgiExt(const std::string &ext);
-	void addCgiPath(const std::string &path);
-	void setUploadPath(const std::string &path);
+	void	setPath(const std::string &path);
+	void	setRoot(const std::string &root);
+	void	setIndex(const std::string &index);
+	void	setAutoindex(bool autoindex);
+	void	addAllowMethod(const std::string &method);
+	void	setReturn(const std::string &redirect);
+	void	addCgiExt(const std::string &ext);
+	void	addCgiPath(const std::string &path);
+	void	setUploadPath(const std::string &path);
 };
 
 #endif

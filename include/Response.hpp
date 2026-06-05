@@ -16,12 +16,12 @@ private:
 	std::string	_body;
 	std::string	_full_response; 
 // Generate default error page
-	void	generateDefaultErrorPage();
+	void				generateDefaultErrorPage();
 // Setters
-	void	setFirstLine();
-	void	setErrorBody(const ServerConfig& server);
-	void	setHeaders();
-	void	setFullResponse();
+	void				setFirstLine();
+	void				setErrorBody(const ServerConfig& server);
+	void				setHeaders();
+	void				setFullResponse();
 public:
 // Lifecycle
 	Response();
@@ -29,15 +29,15 @@ public:
 	Response& operator=(const Response& other);
 	~Response();
 // Setters
-	void	setCodeStatus(int code);
-	void	setStatusPhrase(const std::string& phrase);
+	void				setCodeStatus(int code);
+	void				setStatusPhrase(const std::string& phrase);
 // Getters
 	const std::string&	getFirstLine() const;
 	const std::string&	getBody() const;
 	const std::string&	getHeaders() const;
 	const std::string&	getFullResponse() const;
 // Build Response
-	void	buildError(const ServerConfig& server);
+	void				buildError(const ServerConfig& server);
 };
 
 #endif

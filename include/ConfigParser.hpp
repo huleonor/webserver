@@ -29,19 +29,19 @@ public:
 	std::string compactWhitespace(const std::string &line);
 	std::string extractValue(const std::string &line);
 
-	void buildServers(ServerManager &manager);
-	void parseServerBlock(size_t &i, ServerConfig &config);
-	void parseLocationBlock(size_t &i, Location &location);
+	void 		buildServers(ServerManager &manager);
+	void 		parseServerBlock(size_t &i, ServerConfig &config);
+	void 		parseLocationBlock(size_t &i, Location &location);
 
-	void parseListenDirective(const std::string &line, ServerConfig &config);
-	void parseHostDirective(const std::string &line, ServerConfig &config);
-	void parseServerNameDirective(const std::string &line, ServerConfig &config);
-	void parseRootDirective(const std::string &line, ServerConfig &config);
-	void parseIndexDirective(const std::string &line, ServerConfig &config);
-	void parseClientMaxBodySizeDirective(const std::string &line, ServerConfig &config);
-	void parseErrorPageDirective(const std::string &line, ServerConfig &config);
-
-	void parse(int argc, char **argv, ServerManager &manager);
+	void 		parseListenDirective(const std::string &line, ServerConfig &config);
+	void 		parseHostDirective(const std::string &line, ServerConfig &config);
+	void 		parseServerNameDirective(const std::string &line, ServerConfig &config);
+	void 		parseRootDirective(const std::string &line, ServerConfig &config);
+	void 		parseIndexDirective(const std::string &line, ServerConfig &config);
+	void 		parseClientMaxBodySizeDirective(const std::string &line, ServerConfig &config);
+	void 		parseErrorPageDirective(const std::string &line, ServerConfig &config);
+		
+	void 		parse(int argc, char **argv, ServerManager &manager);
 };
 
 #endif

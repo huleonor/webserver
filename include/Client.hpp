@@ -35,10 +35,10 @@ private:
 	ssize_t			_bytes_sent;
 // Non-copyable (owns a unique socket fd)
 	Client(const Client& other);
-	Client& operator=(const Client& other);
+	Client&	operator=(const Client& other);
 // Request Handling
-	void	receiveHeader(const std::string& request);
-	void	receiveBody(const std::string& request);
+	void				receiveHeader(const std::string& request);
+	void				receiveBody(const std::string& request);
 
 public:
 // Constants
@@ -54,13 +54,13 @@ public:
 	const std::string&	getResponse() const;
 	ssize_t				getBytesSent() const;
 // Setters
-	void	setStatus(Status status);
-	void	setBytesSent(ssize_t n);
+	void				setStatus(Status status);
+	void				setBytesSent(ssize_t n);
 // Response
-	void	buildErrorResponse(int code, const std::string& phrase);
-	void	sendResponse();
+	void				buildErrorResponse(int code, const std::string& phrase);
+	void				sendResponse();
 // Request Handling
-	ssize_t	receiveData();
+	ssize_t				receiveData();
 };
 
 #endif

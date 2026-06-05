@@ -21,6 +21,8 @@ ServerManager::~ServerManager()
 {
 	for (client_it it = _clients.begin(); it != _clients.end(); it++)
 		delete it->second;
+	for (size_t i = 0; i < _servers.size(); i++)
+		close(_servers[i].getSocketFd());
 }
 
 /* ----------------------------- Error handling ----------------------------- */
