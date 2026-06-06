@@ -107,15 +107,15 @@ void	Client::receiveHeader(const std::string& request)
 		{
 			std::istringstream ss(_request.headers["content-length"]);
 			ss >> _content_length;
-			_status = (_content_length > 0) ? READING_BODY : WRITING;
+			_status = (_content_length > 0) ? READING_BODY : PROCESSING;
 		}
 		else if (_request.headers.count("transfer-encoding"))
 		{
 			_chunked = true;
-			_status = READING_BODY;
+			_status = PROCESSING;
 		}
 		else
-			_status = WRITING;
+			_status = PROCESSING;
 	}
 }
 
@@ -133,7 +133,7 @@ void	Client::receiveBody(const std::string& request)
 		if (_request_buffer.size() >= _content_length)
 		{
 			_request.body = _request_buffer.substr(0, _content_length);
-			_status = WRITING;
+			_status = PROCESSING;
 			return ;
 		}
 	}
@@ -148,7 +148,7 @@ void	Client::receiveBody(const std::string& request)
 		ss >> std::hex >> chunk_size;
 		if (chunk_size == 0)
 		{
-			_status = WRITING;
+			_status = PROCESSING;
 			// tmp: verify chunked body was assembled correctly
 			std::cout << "[DEBUG] chunked body complete: \"" << _request.body << "\"" << std::endl;
 			return ;
