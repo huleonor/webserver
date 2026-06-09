@@ -1,4 +1,5 @@
 #include "../../include/Location.hpp"
+#include <algorithm>
 
 Location::Location() : _autoindex(false) {}
 
@@ -51,3 +52,9 @@ void Location::setReturn(const std::string &redirect) { _return = redirect; }
 void Location::addCgiExt(const std::string &ext)      { _cgi_ext.push_back(ext); }
 void Location::addCgiPath(const std::string &path)    { _cgi_path.push_back(path); }
 void Location::setUploadPath(const std::string &path) { _upload_path = path; }
+
+/* ------------------------------- Validations ------------------------------ */
+bool Location::isValidMethod(const std::string& method) const
+{
+	return (std::find(_allow_methods.begin(), _allow_methods.end(), method) != _allow_methods.end());
+}
