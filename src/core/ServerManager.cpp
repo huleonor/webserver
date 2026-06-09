@@ -190,6 +190,8 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 		msg = "send failed: " + std::string(strerror(errno));
 		it->second->setStatus(Client::CLOSE);
 	}
+	if (it->second->getStatus() == Client::PROCESSING)
+		processClientRequest(*it->second);
 	if (it->second->getStatus() == Client::CLOSE)
 		closeConnection(pfds_pos, msg);
 }
@@ -213,14 +215,8 @@ void	ServerManager::processClientRequest(Client& client)
 
 void	ServerManager::handlePostMethod(Client& client, const Location& loc)
 {
-	std::map<std::string, std::string>::const_iterator it = client.getRequest().headers.find("content-type");
-	if (it != client.getRequest().headers.end())
-	{
-		if (it->second.find("multipart/form-data") != std::string::npos)
-			std::cout << "multipart\n"; /////// body parsing
-	}
 	size_t	pos = client.getRequest().path.find_last_of('/');
-	std::string filename = client.getRequest().path.substr(pos + 1);
+	std::string filename = client.getRequest().path.substr(pos);
 	if (filename == loc.getPath() || filename.empty())
 		return client.buildErrorResponse(400, "Bad Request");
 	std::string	foldersPath = client.getRequest().path.substr(1, pos);
@@ -262,64 +258,3 @@ void	ServerManager::handleSignal(int sig)
 	std::cout << std::endl;
 	_running = false;
 }
-
-// /* ----------------------------------- Tmp ---------------------------------- */
-// void ServerManager::print()
-// {
-// 	for (size_t i = 0; i < _servers.size(); i++)
-// 	{
-// 		std::cout << "=== Server " << i + 1 << " ===" << std::endl;
-// 		std::cout << "  host:              " << _servers[i].getHost() << std::endl;
-// 		std::cout << "  port:              " << _servers[i].getPort() << std::endl;
-// 		std::cout << "  server_name:       " << _servers[i].getServerName() << std::endl;
-// 		std::cout << "  root:              " << _servers[i].getRoot() << std::endl;
-// 		std::cout << "  index:             " << _servers[i].getIndex() << std::endl;
-// 		std::cout << "  max_body_size:     " << _servers[i].getClientMaxBodySize() << std::endl;
-
-// 		std::map<int, std::string> error_pages = _servers[i].getErrorPages();
-// 		for (std::map<int, std::string>::iterator it = error_pages.begin(); it != error_pages.end(); it++)
-// 			std::cout << "  error_page:        " << it->first << " -> " << it->second << std::endl;
-
-// 		std::vector<Location> locations = _servers[i].getLocations();
-// 		for (size_t j = 0; j < locations.size(); j++)
-// 		{
-// 			std::cout << "  location " << locations[j].getPath() << ":" << std::endl;
-// 			if (!locations[j].getRoot().empty())
-// 				std::cout << "    root:            " << locations[j].getRoot() << std::endl;
-// 			if (!locations[j].getIndex().empty())
-// 				std::cout << "    index:           " << locations[j].getIndex() << std::endl;
-// 			std::cout << "    autoindex:       " << (locations[j].getAutoindex() ? "on" : "off") << std::endl;
-// 			if (!locations[j].getReturn().empty())
-// 				std::cout << "    return:          " << locations[j].getReturn() << std::endl;
-// 			if (!locations[j].getUploadPath().empty())
-// 				std::cout << "    upload_path:     " << locations[j].getUploadPath() << std::endl;
-
-// 			std::vector<std::string> methods = locations[j].getAllowMethods();
-// 			if (!methods.empty())
-// 			{
-// 				std::cout << "    allow_methods:   ";
-// 				for (size_t k = 0; k < methods.size(); k++)
-// 					std::cout << methods[k] << (k + 1 < methods.size() ? " " : "");
-// 				std::cout << std::endl;
-// 			}
-
-// 			std::vector<std::string> cgi_ext = locations[j].getCgiExt();
-// 			if (!cgi_ext.empty())
-// 			{
-// 				std::cout << "    cgi_ext:         ";
-// 				for (size_t k = 0; k < cgi_ext.size(); k++)
-// 					std::cout << cgi_ext[k] << (k + 1 < cgi_ext.size() ? " " : "");
-// 				std::cout << std::endl;
-// 			}
-
-// 			std::vector<std::string> cgi_path = locations[j].getCgiPath();
-// 			if (!cgi_path.empty())
-// 			{
-// 				std::cout << "    cgi_path:        ";
-// 				for (size_t k = 0; k < cgi_path.size(); k++)
-// 					std::cout << cgi_path[k] << (k + 1 < cgi_path.size() ? " " : "");
-// 				std::cout << std::endl;
-// 			}
-// 		}
-// 	}
-// }

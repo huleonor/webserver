@@ -157,38 +157,38 @@ void	Client::receiveBody(const std::string& request)
 	{
 		if (hasCompleteBody())
 		{
-			_request.body = _request_buffer.substr(0, _content_length);
 			parseMultipartIfNeeded();
-			_status = WRITING;
 			_status = PROCESSING;
 			return ;
 		}
 	}
-	// chunked transfer encoding
-	while (!_request_buffer.empty())
+	else
 	{
-		size_t pos = _request_buffer.find("\r\n");
-		if (pos == std::string::npos)
-			return ;
-		size_t chunk_size;
-		std::istringstream ss(_request_buffer.substr(0, pos));
-		ss >> std::hex >> chunk_size;
-		if (chunk_size == 0)
+		// chunked transfer encoding
+		while (!_request_buffer.empty())
 		{
-			parseMultipartIfNeeded();
-			_status = WRITING;
-			// tmp: verify chunked body was assembled correctly
-			std::cout << "[DEBUG] chunked body complete: \"" << _request.body << "\"" << std::endl;
-			return ;
+			size_t pos = _request_buffer.find("\r\n");
+			if (pos == std::string::npos)
+				return ;
+			size_t chunk_size;
+			std::istringstream ss(_request_buffer.substr(0, pos));
+			ss >> std::hex >> chunk_size;
+			if (chunk_size == 0)
+			{
+				parseMultipartIfNeeded();
+				_status = PROCESSING;
+				// tmp: verify chunked body was assembled correctly
+				std::cout << "[DEBUG] chunked body complete: \"" << _request.body << "\"" << std::endl;
+				return ;
+			}
+			if (_request_buffer.size() < pos + 2 + chunk_size + 2)
+				return ;
+			_request.body += _request_buffer.substr(pos + 2, chunk_size);
+			// tmp: print each chunk as it's extracted
+			std::cout << "[DEBUG] chunk extracted: \"" << _request_buffer.substr(pos + 2, chunk_size) << "\"" << std::endl;
+			_request_buffer.erase(0, pos + 2 + chunk_size + 2);
 		}
-		if (_request_buffer.size() < pos + 2 + chunk_size + 2)
-			return ;
-		_request.body += _request_buffer.substr(pos + 2, chunk_size);
-		// tmp: print each chunk as it's extracted
-		std::cout << "[DEBUG] chunk extracted: \"" << _request_buffer.substr(pos + 2, chunk_size) << "\"" << std::endl;
-		_request_buffer.erase(0, pos + 2 + chunk_size + 2);
 	}
-	
 }
 
 bool	Client::hasCompleteBody()

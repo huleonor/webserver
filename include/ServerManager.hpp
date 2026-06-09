@@ -50,8 +50,6 @@ public:
 	void	start();
 // Signal handling
 	static void	handleSignal(int sig);
-// Temp
-	void	print();
 };
 
 #endif
