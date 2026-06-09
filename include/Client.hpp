@@ -43,6 +43,7 @@ private:
 // Request Handling
 	void				receiveHeader(const std::string& request);
 	void				receiveBody(const std::string& request);
+	bool				hasCompleteBody();
 
 public:
 // Constants
@@ -56,6 +57,8 @@ public:
 	in_addr_t			getClientAddr() const;
 	Status				getStatus() const;
 	const std::string&	getResponse() const;
+	const HttpRequest&	getRequest() const;
+	const ServerConfig*	getClientServer() const;
 	ssize_t				getBytesSent() const;
 	time_t				getLastTimeActivity() const;
 // Setters

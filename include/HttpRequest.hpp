@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include "Location.hpp"
 
 struct HttpRequest
 {
@@ -17,6 +18,7 @@ struct HttpRequest
 	HttpRequest();
 	~HttpRequest();
 	void	parse(const std::string& header);
+	bool	isSafeUri(const std::string uri) const;
 };
 
 #endif

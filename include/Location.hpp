@@ -24,6 +24,7 @@ public:
 	Location& operator=(const Location& other);
 	~Location();
 
+	// Getters
 	std::string              	getPath() const;
 	std::string              	getRoot() const;
 	std::string              	getIndex() const;
@@ -33,7 +34,7 @@ public:
 	std::vector<std::string> 	getCgiExt() const;
 	std::vector<std::string> 	getCgiPath() const;
 	std::string              	getUploadPath() const;
-
+	// Setters
 	void	setPath(const std::string &path);
 	void	setRoot(const std::string &root);
 	void	setIndex(const std::string &index);
@@ -43,6 +44,8 @@ public:
 	void	addCgiExt(const std::string &ext);
 	void	addCgiPath(const std::string &path);
 	void	setUploadPath(const std::string &path);
+	// Validations
+	bool	isValidMethod(const std::string& method) const;
 };
 
 #endif
