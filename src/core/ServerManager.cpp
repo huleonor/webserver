@@ -10,8 +10,6 @@
 #include <cerrno>        
 #include <stdexcept> 
 #include <algorithm>
-#include <sys/stat.h>
-#include <fstream>
 
 /* ---------------------------- Member Attributes --------------------------- */
 bool	ServerManager::_running = true;
@@ -110,7 +108,7 @@ void	ServerManager::monitorClients()
 	for (size_t i = _servers.size(); i < _pfds.size(); i++)
 	{
 		client_it	it = _clients.find(_pfds[i].fd);
-		if (time(NULL) - it->second->getLastTimeActivity() > 60)
+		if (time(NULL) - it->second->getLastTimeActivity() >= 60)
 			closeConnection(i, "");
 	}
 }
@@ -173,7 +171,7 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 	if (n == -1)
 		closeConnection(pfds_pos, "recv failed: " + std::string(strerror(errno)));
 	else if (n == 0)
-		closeConnection(pfds_pos, "");
+		return closeConnection(pfds_pos, "");
 	if (it->second->getStatus() == Client::PROCESSING)
 		processClientRequest(*it->second);
 	if (it->second->getStatus() == Client::ERROR)
@@ -208,28 +206,9 @@ void	ServerManager::processClientRequest(Client& client)
 	if (client.getRequest().method == "GET")
 		std::cout << "handle get\n"; ////////tmp
 	else if (client.getRequest().method == "POST")
-		handlePostMethod(client, *location);
+		client.handlePost(*location);
 	else
 		std::cout << "handle delete\n"; ////////tmp
-}
-
-void	ServerManager::handlePostMethod(Client& client, const Location& loc)
-{
-	size_t	pos = client.getRequest().path.find_last_of('/');
-	std::string filename = client.getRequest().path.substr(pos);
-	if (filename == loc.getPath() || filename.empty())
-		return client.buildErrorResponse(400, "Bad Request");
-	std::string	foldersPath = client.getRequest().path.substr(1, pos);
-	if (loc.getUploadPath().empty() == false)
-		foldersPath = loc.getUploadPath();
-	else
-	{
-		std::string root = (loc.getRoot().empty()) ? client.getClientServer()->getRoot() : loc.getRoot();
-		foldersPath = root + foldersPath;
-	}
-	std::cout << foldersPath << std::endl;
-	std::cout << filename << std::endl;
-	
 }
 
 void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)

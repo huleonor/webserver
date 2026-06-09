@@ -5,6 +5,8 @@
 #include <cerrno>
 #include <unistd.h>
 #include <cstring>
+#include <sys/stat.h>
+#include <fstream>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
@@ -34,7 +36,7 @@ int					Client::getClientSocket() const	{ return (_client_socket); }
 in_port_t			Client::getClientPort() const	{ return (_client_port); }
 in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
 Client::Status		Client::getStatus() const		{ return (_status); }
-const HttpRequest&		Client::getRequest() const		{ return (_request); }
+const HttpRequest&	Client::getRequest() const		{ return (_request); }
 const std::string&	Client::getResponse() const		{ return (_response.getFullResponse()); }
 const ServerConfig*	Client::getClientServer() const { return (_server); }
 ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
@@ -54,6 +56,8 @@ void	Client::parseMultipartIfNeeded()
 		return ;
 	std::string boundary = content_type.substr(boundary_pos + 9);
 	_request.parseMultipart(boundary);
+	if (_request.uploads.size() == 0)
+		buildErrorResponse(400, "Bad Request");
 }
 
 void	Client::buildErrorResponse(int code, const std::string& phrase)
@@ -124,21 +128,26 @@ void	Client::receiveHeader(const std::string& request)
 				buildErrorResponse(400, "Bad Request");
 			return ;
 		}
-		if (_request.headers.count("content-length"))
-		{
-			std::istringstream ss(_request.headers["content-length"]);
-			ss >> _content_length;
-			if (_content_length > _server->getClientMaxBodySize())
-			{
-				buildErrorResponse(413, "Content Too Large");
-				return ; 
-			}
-			_status = (_content_length > 0) ? READING_BODY : PROCESSING;
-		}
-		else if (_request.headers.count("transfer-encoding"))
+		if (_request.headers.count("transfer-encoding"))
 		{
 			_chunked = true;
 			_status = READING_BODY;
+		}
+		else if (_request.headers.count("content-length"))
+		{
+			std::istringstream ss(_request.headers["content-length"]);
+			ss >> _content_length;
+			if (ss.fail())
+			{
+				buildErrorResponse(400, "Bad Request");
+				return ;
+			}
+			if (_content_length > _server->getClientMaxBodySize())
+			{
+				buildErrorResponse(413, "Content Too Large");
+				return ;
+			}
+			_status = (_content_length > 0) ? READING_BODY : PROCESSING;
 		}
 		else
 			_status = PROCESSING;
@@ -158,8 +167,8 @@ void	Client::receiveBody(const std::string& request)
 		if (hasCompleteBody())
 		{
 			parseMultipartIfNeeded();
-			_status = PROCESSING;
-			return ;
+			if (_status != ERROR)
+				_status = PROCESSING;
 		}
 	}
 	else
@@ -176,7 +185,8 @@ void	Client::receiveBody(const std::string& request)
 			if (chunk_size == 0)
 			{
 				parseMultipartIfNeeded();
-				_status = PROCESSING;
+				if (_status != ERROR)
+					_status = PROCESSING;
 				// tmp: verify chunked body was assembled correctly
 				std::cout << "[DEBUG] chunked body complete: \"" << _request.body << "\"" << std::endl;
 				return ;
@@ -199,4 +209,54 @@ bool	Client::hasCompleteBody()
 		return (true);
 	}
 	return (false);
+}
+
+void	Client::handlePost(const Location& loc)
+{
+	buildUploadFromPath(loc);
+	if (_request.uploads.size() == 0)
+		return ;
+
+	std::string	dirPath;
+	std::string	root = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
+	if (_request.path == loc.getPath() && loc.getUploadPath().empty() == false)
+		dirPath = loc.getUploadPath();
+	else
+		dirPath =  (loc.getRoot().empty() ? _server->getRoot() : loc.getRoot()) + _request.path;
+	struct	stat st;
+
+	if (stat(dirPath.c_str(), &st) == 0)
+	{
+		if (S_ISDIR(st.st_mode))
+			std::cout << dirPath << " is dir" << std::endl;
+		else if (S_ISREG(st.st_mode))
+			std::cout << _request.uploads[0].filename << " is file" << std::endl;
+	}
+	else
+		std::cout << dirPath << " not exist" << std::endl;
+	
+}
+
+void	Client::buildUploadFromPath(const Location& loc)
+{
+	size_t	pos = 0;
+	if (_request.uploads.size() == 0)
+	{
+		pos = _request.path.find_last_of('/');
+		std::string filename = _request.path.substr(pos + 1);
+		std::string	locName = loc.getPath().substr(1);
+		if (filename == locName || filename.empty())
+			return buildErrorResponse(400, "Bad Request");
+		_request.path = _request.path.erase(pos);
+		UploadFile	upload;
+		upload.filename = filename;
+		upload.content = _request.body;
+		_request.uploads.push_back(upload);
+	}
+	else
+	{
+		pos = _request.path.size() - 1;
+		if (_request.path[pos] == '/')
+			_request.path.erase(pos);
+	}
 }

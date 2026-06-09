@@ -48,9 +48,12 @@ void	HttpRequest::parseMultipart(const std::string& boundary)
 				file.filename = part_headers.substr(fn_pos, fn_end - fn_pos);
 		}
 		file.content = body.substr(content_start, next_boundary - content_start);
-		uploads.push_back(file);
-		std::cout << "[DEBUG] upload: " << file.filename
+		if (!file.content.empty() && !file.filename.empty())
+		{
+			uploads.push_back(file);
+			std::cout << "[DEBUG] upload: " << file.filename
 				  << " (" << file.content.size() << " bytes)" << std::endl;
+		}
 
 		pos = body.find(delimiter, next_boundary);
 	}
@@ -137,4 +140,4 @@ void	HttpRequest::parse(const std::string& header)
 	}
 }
 
-bool	HttpRequest::isSafeUri(const std::string uri) const	{ return (uri.find("..") == std::string::npos); }
+bool	HttpRequest::isSafeUri(const std::string& uri) const	{ return (uri.find("..") == std::string::npos); }

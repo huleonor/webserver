@@ -52,7 +52,7 @@ void	Response::setErrorBody(const ServerConfig& server)
 		generateDefaultErrorPage();
 		return ;
 	}
-	std::string		full_path = server.getRoot() + it->second;
+	std::string		full_path = server.getRoot() + '/' + it->second;
 	std::ifstream	file(full_path.c_str());
 	if (!file.is_open())
 	{

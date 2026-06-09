@@ -45,6 +45,7 @@ private:
 	void				receiveBody(const std::string& request);
 	bool				hasCompleteBody();
 	void				parseMultipartIfNeeded();
+	void				buildUploadFromPath(const Location& loc);
 
 public:
 // Constants
@@ -71,6 +72,7 @@ public:
 	void				sendResponse();
 // Request Handling
 	ssize_t				receiveData();
+	void				handlePost(const Location& loc);
 };
 
 #endif

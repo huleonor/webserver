@@ -27,8 +27,6 @@ private:
 	void	handleClientResponse(size_t& pfds_pos);
 	void	processClientRequest(Client& client);
 	void	closeConnection(size_t& pfds_pos, const std::string& msg);
-// Methods processing
-	void	handlePostMethod(Client& client, const Location& loc);
 // Error handling
 	void	handleInitOrAcceptError(int fd, const std::string& msg);
 // Runtime
