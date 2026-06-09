@@ -204,11 +204,11 @@ void	ServerManager::processClientRequest(Client& client)
 	// if (!loc.getCgiExt().empty() && !loc.getCgiPath().empty())
 	// return	handleCGI();
 	if (client.getRequest().method == "GET")
-		std::cout << "handle get\n"; ////tmp
+		std::cout << "handle get\n"; ////////tmp
 	else if (client.getRequest().method == "POST")
 		handlePostMethod(client, *location);
 	else
-		std::cout << "handle delete\n"; //tmp
+		std::cout << "handle delete\n"; ////////tmp
 }
 
 void	ServerManager::handlePostMethod(Client& client, const Location& loc)
@@ -216,10 +216,24 @@ void	ServerManager::handlePostMethod(Client& client, const Location& loc)
 	std::map<std::string, std::string>::const_iterator it = client.getRequest().headers.find("content-type");
 	if (it != client.getRequest().headers.end())
 	{
-		std::string type = it->second;
+		if (it->second.find("multipart/form-data") != std::string::npos)
+			std::cout << "multipart\n"; /////// body parsing
 	}
-	client.buildErrorResponse(201, "ok");
-	(void)loc;
+	size_t	pos = client.getRequest().path.find_last_of('/');
+	std::string filename = client.getRequest().path.substr(pos + 1);
+	if (filename == loc.getPath() || filename.empty())
+		return client.buildErrorResponse(400, "Bad Request");
+	std::string	foldersPath = client.getRequest().path.substr(1, pos);
+	if (loc.getUploadPath().empty() == false)
+		foldersPath = loc.getUploadPath();
+	else
+	{
+		std::string root = (loc.getRoot().empty()) ? client.getClientServer()->getRoot() : loc.getRoot();
+		foldersPath = root + foldersPath;
+	}
+	std::cout << foldersPath << std::endl;
+	std::cout << filename << std::endl;
+	
 }
 
 void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)

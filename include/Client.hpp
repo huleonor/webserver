@@ -56,8 +56,8 @@ public:
 	in_port_t			getClientPort() const;
 	in_addr_t			getClientAddr() const;
 	Status				getStatus() const;
-	const std::string&	getResponse() const;
 	const HttpRequest&	getRequest() const;
+	const std::string&	getResponse() const;
 	const ServerConfig*	getClientServer() const;
 	ssize_t				getBytesSent() const;
 	time_t				getLastTimeActivity() const;

@@ -22,7 +22,7 @@ std::string ConfigParser::readFile(const std::string &filepath)
 
 void ConfigParser::parse(int argc, char **argv, ServerManager &manager)
 {
-    std::string config_path = (argc == 1 ? "../../configs/default.conf" : argv[1]);
+    std::string config_path = (argc == 1 ? "configs/default.conf" : argv[1]);
     std::string content = this->readFile(config_path);
     std::stringstream ss(content);
 

@@ -21,3 +21,8 @@ Códigos de resposta POST:
 	- 415 Unsupported Media Type→ Content-Type não suportado
 	- 500 Internal Server Error → erro interno do servidor
 
+
+
+/upload
+
+/upload/file
