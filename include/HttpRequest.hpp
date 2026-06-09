@@ -3,6 +3,13 @@
 
 #include <string>
 #include <map>
+#include <vector>
+
+struct UploadFile
+{
+	std::string	filename;
+	std::string	content;
+};
 
 struct HttpRequest
 {
@@ -13,10 +20,12 @@ struct HttpRequest
 	std::map<std::string, std::string>	headers;
 	std::string							body;
 	int									error_code;
+	std::vector<UploadFile>				uploads;
 
 	HttpRequest();
 	~HttpRequest();
 	void	parse(const std::string& header);
+	void	parseMultipart(const std::string& boundary);
 };
 
 #endif

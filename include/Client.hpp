@@ -40,6 +40,7 @@ private:
 // Request Handling
 	void				receiveHeader(const std::string& request);
 	void				receiveBody(const std::string& request);
+	void				parseMultipartIfNeeded();
 
 public:
 // Constants

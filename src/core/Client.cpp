@@ -35,6 +35,21 @@ void	Client::setStatus(Status status)	{ _status = status; }
 void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
 
 /* -------------------------------- Response -------------------------------- */
+void	Client::parseMultipartIfNeeded()
+{
+	std::map<std::string, std::string>::iterator it = _request.headers.find("content-type");
+	if (it == _request.headers.end())
+		return ;
+	std::string& content_type = it->second;
+	if (content_type.find("multipart/form-data") == std::string::npos)
+		return ;
+	size_t boundary_pos = content_type.find("boundary=");
+	if (boundary_pos == std::string::npos)
+		return ;
+	std::string boundary = content_type.substr(boundary_pos + 9);
+	_request.parseMultipart(boundary);
+}
+
 void	Client::buildErrorResponse(int code, const std::string& phrase)
 {
 	_response.setCodeStatus(code);
@@ -130,6 +145,7 @@ void	Client::receiveBody(const std::string& request)
 		if (_request_buffer.size() >= _content_length)
 		{
 			_request.body = _request_buffer.substr(0, _content_length);
+			parseMultipartIfNeeded();
 			_status = WRITING;
 		}
 		return ;
@@ -145,6 +161,7 @@ void	Client::receiveBody(const std::string& request)
 		ss >> std::hex >> chunk_size;
 		if (chunk_size == 0)
 		{
+			parseMultipartIfNeeded();
 			_status = WRITING;
 			// tmp: verify chunked body was assembled correctly
 			std::cout << "[DEBUG] chunked body complete: \"" << _request.body << "\"" << std::endl;
