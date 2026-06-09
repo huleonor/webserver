@@ -4,6 +4,7 @@
 #include <sstream>
 #include <cerrno>
 #include <unistd.h>
+#include <cstring>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
@@ -16,23 +17,28 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
       _content_length(0),
       _chunked(false),
       _status(READING_HEADER),
-      _bytes_sent(0)
+      _bytes_sent(0),
+	  _last_time_activity(time(NULL))
 {
 }
 
 Client::~Client() { close(_client_socket); }
+
+/* --------------------------------- Setters -------------------------------- */
+void	Client::setStatus(Status status)	{ _status = status; }
+void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
+void	Client::setLastTimeActivity(time_t time)	{ _last_time_activity = time; }
 
 /* --------------------------------- Getters -------------------------------- */
 int					Client::getClientSocket() const	{ return (_client_socket); }
 in_port_t			Client::getClientPort() const	{ return (_client_port); }
 in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
 Client::Status		Client::getStatus() const		{ return (_status); }
+const HttpRequest&		Client::getRequest() const		{ return (_request); }
 const std::string&	Client::getResponse() const		{ return (_response.getFullResponse()); }
+const ServerConfig*	Client::getClientServer() const { return (_server); }
 ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
-
-/* --------------------------------- Setters -------------------------------- */
-void	Client::setStatus(Status status)	{ _status = status; }
-void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
+time_t				Client::getLastTimeActivity() const { return (_last_time_activity); }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::parseMultipartIfNeeded()
@@ -55,6 +61,7 @@ void	Client::buildErrorResponse(int code, const std::string& phrase)
 	_response.setCodeStatus(code);
 	_response.setStatusPhrase(phrase);
 	_response.buildError(*_server);
+	_status = ERROR;
 }
 
 void	Client::sendResponse()
@@ -82,8 +89,12 @@ ssize_t	Client::receiveData()
 	if (n > 0)
 	{
 		if (_status == READING_HEADER)
+		{
 			receiveHeader(std::string(buffer, n));
-		if (_status == READING_BODY)
+			if (_status == READING_BODY)
+				receiveBody("");
+		}
+		else if (_status == READING_BODY)
 			receiveBody(std::string(buffer, n));
 	}
 	return (n);
@@ -93,8 +104,7 @@ void	Client::receiveHeader(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
 	{
-		buildErrorResponse(404, "Request Header Or Cookie Too Large");
-		_status = ERROR;
+		buildErrorResponse(400, "Request Header Or Cookie Too Large");
 		return ;
 	}
 	_request_buffer.append(request);
@@ -112,14 +122,18 @@ void	Client::receiveHeader(const std::string& request)
 				buildErrorResponse(414, "URI Too Long");
 			else
 				buildErrorResponse(400, "Bad Request");
-			_status = ERROR;
 			return ;
 		}
 		if (_request.headers.count("content-length"))
 		{
 			std::istringstream ss(_request.headers["content-length"]);
 			ss >> _content_length;
-			_status = (_content_length > 0) ? READING_BODY : WRITING;
+			if (_content_length > _server->getClientMaxBodySize())
+			{
+				buildErrorResponse(413, "Content Too Large");
+				return ; 
+			}
+			_status = (_content_length > 0) ? READING_BODY : PROCESSING;
 		}
 		else if (_request.headers.count("transfer-encoding"))
 		{
@@ -127,7 +141,7 @@ void	Client::receiveHeader(const std::string& request)
 			_status = READING_BODY;
 		}
 		else
-			_status = WRITING;
+			_status = PROCESSING;
 	}
 }
 
@@ -136,19 +150,19 @@ void	Client::receiveBody(const std::string& request)
 	if (_request_buffer.size() + request.size() > _server->getClientMaxBodySize())
 	{
 		buildErrorResponse(413, "Content Too Large");
-		_status = ERROR;
 		return ;
 	}
 	_request_buffer.append(request);
 	if (!_chunked)
 	{
-		if (_request_buffer.size() >= _content_length)
+		if (hasCompleteBody())
 		{
 			_request.body = _request_buffer.substr(0, _content_length);
 			parseMultipartIfNeeded();
 			_status = WRITING;
+			_status = PROCESSING;
+			return ;
 		}
-		return ;
 	}
 	// chunked transfer encoding
 	while (!_request_buffer.empty())
@@ -174,4 +188,15 @@ void	Client::receiveBody(const std::string& request)
 		std::cout << "[DEBUG] chunk extracted: \"" << _request_buffer.substr(pos + 2, chunk_size) << "\"" << std::endl;
 		_request_buffer.erase(0, pos + 2 + chunk_size + 2);
 	}
+	
+}
+
+bool	Client::hasCompleteBody()
+{
+	if (_content_length > 0 && _request_buffer.size() >= _content_length)
+	{
+		_request.body = _request_buffer.substr(0, _content_length);
+		return (true);
+	}
+	return (false);
 }

@@ -26,6 +26,7 @@ public:
 	ServerConfig(const ServerConfig& other);
 	ServerConfig& operator=(const ServerConfig& other);
 	~ServerConfig();
+	// Getters
 	uint16_t                          	getPort() const;
 	const std::string&					getHost() const;
 	const std::string&					getServerName() const;
@@ -35,7 +36,7 @@ public:
 	const std::map<int, std::string>&	getErrorPages() const;
 	int                               	getSocketFd() const;
 	const std::vector<Location>&		getLocations() const;
-	
+	// Setters
 	void setPort(uint16_t port);
 	void setHost(const std::string &host);
 	void setServerName(const std::string &server_name);
@@ -45,6 +46,8 @@ public:
 	void setSocketFd(int fd);
 	void addErrorPage(int code, const std::string &page);
 	void addLocation(const Location &location);
+	// Lookup
+	const Location* findLocation(const std::string& path) const;
 };
 
 #endif

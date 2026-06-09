@@ -60,3 +60,23 @@ void ServerConfig::addErrorPage(int code, const std::string &page) { _error_page
 void ServerConfig::addLocation(const Location &location)     { _locations.push_back(location); }
 
 
+const Location* ServerConfig::findLocation(const std::string& path) const
+{
+	const Location*	match = NULL;
+	size_t	bestLen = 0;
+
+	for (size_t i = 0; i < _locations.size(); i++)
+	{
+		const std::string& locPath = _locations[i].getPath();
+		if (path.find(locPath) == 0 && locPath.size() > bestLen)
+		{
+			size_t	len = locPath.size();
+			if (path.size() == len || path[len] == '/')
+			{
+				bestLen = locPath.size();
+				match = &_locations[i];
+			}
+		}
+	}
+	return (match);
+}

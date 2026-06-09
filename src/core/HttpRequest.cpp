@@ -105,7 +105,7 @@ void	HttpRequest::parse(const std::string& header)
 		error_code = 400;
 		return ;
 	}
-	if (uri.empty() || uri[0] != '/')
+	if (uri.empty() || uri[0] != '/' || !isSafeUri(uri))
 	{
 		error_code = 400;
 		return ;
@@ -136,3 +136,5 @@ void	HttpRequest::parse(const std::string& header)
 		headers[key] = value;
 	}
 }
+
+bool	HttpRequest::isSafeUri(const std::string uri) const	{ return (uri.find("..") == std::string::npos); }

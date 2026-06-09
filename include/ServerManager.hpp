@@ -9,6 +9,9 @@
 
 class ServerManager
 {
+public:
+// Types
+	typedef std::map<int, Client*>::iterator	client_it;
 private:
 // Attributes
 	std::map<int, Client*>		_clients;
@@ -22,16 +25,18 @@ private:
 	void	acceptNewClient(size_t pfds_pos);
 	void	handleClientRequest(size_t& pfds_pos);
 	void	handleClientResponse(size_t& pfds_pos);
+	void	processClientRequest(Client& client);
 	void	closeConnection(size_t& pfds_pos, const std::string& msg);
+// Methods processing
+	void	handlePostMethod(Client& client, const Location& loc);
 // Error handling
 	void	handleInitOrAcceptError(int fd, const std::string& msg);
 // Runtime
 	void	handleEvent();
 	bool	isServerSocket(size_t pos);
+	void	monitorClients();
 
 public:
-// Types
-	typedef std::map<int, Client*>::iterator	client_it;
 // Lifecycle
 	ServerManager();
 	~ServerManager();
