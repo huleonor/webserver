@@ -71,7 +71,7 @@ const Location* ServerConfig::findLocation(const std::string& path) const
 		if (path.find(locPath) == 0 && locPath.size() > bestLen)
 		{
 			size_t	len = locPath.size();
-			if (path.size() == len || path[len] == '/')
+			if (path.size() == len || path[len] == '/' || locPath == "/")
 			{
 				bestLen = locPath.size();
 				match = &_locations[i];

@@ -110,12 +110,7 @@ void ConfigParser::parseLocationBlock(size_t &i, Location &location)
         const std::string &line = _lines[i];
 
         if (line.substr(0, 4) == "root")
-		{
-			std::string root = extractValue(line);
-    		if (!root.empty() && root[root.size() - 1] == '/')
-    		    root.erase(root.size() - 1);
-    		location.setRoot(root);
-		}
+    		location.setRoot(extractValue(line));
         else if (line.substr(0, 5) == "index")
             location.setIndex(extractValue(line));
         else if (line.substr(0, 9) == "autoindex")

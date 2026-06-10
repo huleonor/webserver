@@ -46,6 +46,7 @@ private:
 	bool				hasCompleteBody();
 	void				parseMultipartIfNeeded();
 	void				buildUploadFromPath(const Location& loc);
+	void				buildDirPath(const Location& loc, std::string& dirPath);
 
 public:
 // Constants

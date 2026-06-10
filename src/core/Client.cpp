@@ -8,6 +8,15 @@
 #include <sys/stat.h>
 #include <fstream>
 
+/* ---------------------------- Static functions ---------------------------- */
+static void	normalizeSlash(std::string& str)
+{
+	if (str[0] == '/')
+		str.erase(0, 1);
+	if (str[str.size() - 1] == '/')
+		str.erase(str.size() - 1);
+}
+
 /* ----------------------- Constructor and Destructor ----------------------- */
 Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
     : _client_socket(fd),
@@ -213,50 +222,49 @@ bool	Client::hasCompleteBody()
 
 void	Client::handlePost(const Location& loc)
 {
-	buildUploadFromPath(loc);
 	if (_request.uploads.size() == 0)
+		buildUploadFromPath(loc);
+	if (_status == ERROR)
 		return ;
-
+	
 	std::string	dirPath;
-	std::string	root = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
-	if (_request.path == loc.getPath() && loc.getUploadPath().empty() == false)
-		dirPath = loc.getUploadPath();
-	else
-		dirPath =  (loc.getRoot().empty() ? _server->getRoot() : loc.getRoot()) + _request.path;
+	buildDirPath(loc, dirPath);
 	struct	stat st;
-
 	if (stat(dirPath.c_str(), &st) == 0)
 	{
 		if (S_ISDIR(st.st_mode))
 			std::cout << dirPath << " is dir" << std::endl;
-		else if (S_ISREG(st.st_mode))
-			std::cout << _request.uploads[0].filename << " is file" << std::endl;
+		if (S_ISREG(st.st_mode))
+		{
+			std::cout << "[ DEBUG ] " << dirPath << " is file" << std::endl;
+			buildErrorResponse(400, "Bad Request");
+		}
 	}
-	else
-		std::cout << dirPath << " not exist" << std::endl;
-	
 }
 
 void	Client::buildUploadFromPath(const Location& loc)
 {
-	size_t	pos = 0;
-	if (_request.uploads.size() == 0)
-	{
-		pos = _request.path.find_last_of('/');
-		std::string filename = _request.path.substr(pos + 1);
-		std::string	locName = loc.getPath().substr(1);
-		if (filename == locName || filename.empty())
+	UploadFile	upload;
+	size_t	pos = _request.path.find_last_of('/');
+
+	upload.filename = _request.path.substr(pos + 1);
+	upload.content = _request.body;
+	if (upload.filename == loc.getPath().substr(1) || 
+		upload.filename.empty() || 
+		upload.content.empty())
 			return buildErrorResponse(400, "Bad Request");
-		_request.path = _request.path.erase(pos);
-		UploadFile	upload;
-		upload.filename = filename;
-		upload.content = _request.body;
-		_request.uploads.push_back(upload);
-	}
+	_request.path.erase(pos);
+}
+
+void	Client::buildDirPath(const Location& loc, std::string& dirPath)
+{
+	if (_request.path == loc.getPath() && !loc.getUploadPath().empty())
+		dirPath = loc.getUploadPath();
 	else
 	{
-		pos = _request.path.size() - 1;
-		if (_request.path[pos] == '/')
-			_request.path.erase(pos);
+		std::string	root = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
+		normalizeSlash(root);
+		normalizeSlash(_request.path);
+		dirPath = root + '/' + _request.path;
 	}
 }

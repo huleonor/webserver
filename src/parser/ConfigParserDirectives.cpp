@@ -28,10 +28,7 @@ void ConfigParser::parseServerNameDirective(const std::string &line, ServerConfi
 
 void ConfigParser::parseRootDirective(const std::string &line, ServerConfig &config)
 {
-	std::string root = extractValue(line);
-    if (!root.empty() && root[root.size() - 1] == '/')
-        root.erase(root.size() - 1);
-    config.setRoot(root);
+    config.setRoot(extractValue(line));
 }
 
 void ConfigParser::parseIndexDirective(const std::string &line, ServerConfig &config)

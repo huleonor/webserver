@@ -33,15 +33,15 @@ Location& Location::operator=(const Location& other)
 
 Location::~Location() {}
 
-std::string              Location::getPath() const         { return _path; }
-std::string              Location::getRoot() const         { return _root; }
-std::string              Location::getIndex() const        { return _index; }
-bool                     Location::getAutoindex() const    { return _autoindex; }
-std::vector<std::string> Location::getAllowMethods() const { return _allow_methods; }
-std::string              Location::getReturn() const       { return _return; }
-std::vector<std::string> Location::getCgiExt() const      { return _cgi_ext; }
-std::vector<std::string> Location::getCgiPath() const     { return _cgi_path; }
-std::string              Location::getUploadPath() const   { return _upload_path; }
+const std::string&              Location::getPath() const         { return _path; }
+const std::string&              Location::getRoot() const         { return _root; }
+const std::string&              Location::getIndex() const        { return _index; }
+bool                            Location::getAutoindex() const    { return _autoindex; }
+const std::vector<std::string>& Location::getAllowMethods() const { return _allow_methods; }
+const std::string&              Location::getReturn() const       { return _return; }
+const std::vector<std::string>& Location::getCgiExt() const      { return _cgi_ext; }
+const std::vector<std::string>& Location::getCgiPath() const     { return _cgi_path; }
+const std::string&              Location::getUploadPath() const   { return _upload_path; }
 
 void Location::setPath(const std::string &path)       { _path = path; }
 void Location::setRoot(const std::string &root)       { _root = root; }

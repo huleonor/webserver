@@ -25,7 +25,7 @@ struct HttpRequest
 	HttpRequest();
 	~HttpRequest();
 	void	parse(const std::string& header);
-	bool	isSafeUri(const std::string& uri) const;
+	bool	isValidPath(const std::string& uri) const;
 	void	parseMultipart(const std::string& boundary);
 };
 
