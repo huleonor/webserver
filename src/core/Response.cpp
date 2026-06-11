@@ -1,5 +1,6 @@
 #include "../../include/Response.hpp"
 #include "../../include/ServerConfig.hpp"
+#include "../../include/utils.hpp"
 #include <sstream>
 #include <fstream>
 
@@ -53,7 +54,9 @@ void	Response::setErrorBody(const ServerConfig& server)
 		generateDefaultErrorPage();
 		return ;
 	}
-	std::string		full_path = server.getRoot() + it->second;
+	std::string		root = server.getRoot();
+	normalizeSlash(root);
+	std::string		full_path = root + '/' + it->second;
 	std::ifstream	file(full_path.c_str());
 	if (!file.is_open())
 	{

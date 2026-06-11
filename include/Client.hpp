@@ -46,6 +46,10 @@ private:
 	bool				hasCompleteBody();
 	void				parseMultipartIfNeeded();
 	void				buildAutoindex(const std::string& dirPath);
+	void				buildUploadFromPath(const Location& loc);
+	void				buildDirPath(const Location& loc, std::string& dirPath);
+	bool				isValidDirPath(const std::string& dirPath);
+	void				postContent(const std::string& dirPath);
 
 public:
 // Constants
@@ -73,6 +77,7 @@ public:
 	void				sendResponse();
 // Request Handling
 	ssize_t				receiveData();
+	void				handlePost(const Location& loc);
 };
 
 #endif

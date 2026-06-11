@@ -25,15 +25,15 @@ public:
 	~Location();
 
 	// Getters
-	std::string              	getPath() const;
-	std::string              	getRoot() const;
-	std::string              	getIndex() const;
-	bool                     	getAutoindex() const;
-	std::vector<std::string> 	getAllowMethods() const;
-	std::string              	getReturn() const;
-	std::vector<std::string> 	getCgiExt() const;
-	std::vector<std::string> 	getCgiPath() const;
-	std::string              	getUploadPath() const;
+	const std::string&              	getPath() const;
+	const std::string&              	getRoot() const;
+	const std::string&              	getIndex() const;
+	bool                            	getAutoindex() const;
+	const std::vector<std::string>& 	getAllowMethods() const;
+	const std::string&              	getReturn() const;
+	const std::vector<std::string>& 	getCgiExt() const;
+	const std::vector<std::string>& 	getCgiPath() const;
+	const std::string&              	getUploadPath() const;
 	// Setters
 	void	setPath(const std::string &path);
 	void	setRoot(const std::string &root);
