@@ -3,7 +3,6 @@
 #include "../../include/utils.hpp"
 #include <sstream>
 #include <fstream>
-#include <iostream>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Response::Response() : _status_code(0) {}
@@ -57,7 +56,6 @@ void	Response::setErrorBody(const ServerConfig& server)
 	std::string		root = server.getRoot();
 	normalizeSlash(root);
 	std::string		full_path = root + '/' + it->second;
-	std::cout << full_path << std::endl;
 	std::ifstream	file(full_path.c_str());
 	if (!file.is_open())
 	{
