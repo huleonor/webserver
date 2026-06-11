@@ -47,6 +47,8 @@ private:
 	void				parseMultipartIfNeeded();
 	void				buildUploadFromPath(const Location& loc);
 	void				buildDirPath(const Location& loc, std::string& dirPath);
+	bool				isValidDirPath(const std::string& dirPath);
+	void				postContent(const std::string& dirPath);
 
 public:
 // Constants

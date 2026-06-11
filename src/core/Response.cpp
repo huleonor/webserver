@@ -1,7 +1,9 @@
 #include "../../include/Response.hpp"
 #include "../../include/ServerConfig.hpp"
+#include "../../include/utils.hpp"
 #include <sstream>
 #include <fstream>
+#include <iostream>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Response::Response() : _status_code(0) {}
@@ -32,7 +34,7 @@ Response::~Response() {}
 
 /* --------------------------------- Setter --------------------------------- */
 void	Response::setCodeStatus(int code)	{ _status_code = code; }
-void	Response::setStatusPhrase(const std::string& phrase)	{ _status_phrase = phrase; }
+void	Response::setPhraseStatus(const std::string& phrase)	{ _status_phrase = phrase; }
 void	Response::setFullResponse()	{ _full_response = _first_line + _headers + _body; }
 
 void	Response::setFirstLine()
@@ -52,7 +54,10 @@ void	Response::setErrorBody(const ServerConfig& server)
 		generateDefaultErrorPage();
 		return ;
 	}
-	std::string		full_path = server.getRoot() + '/' + it->second;
+	std::string		root = server.getRoot();
+	normalizeSlash(root);
+	std::string		full_path = root + '/' + it->second;
+	std::cout << full_path << std::endl;
 	std::ifstream	file(full_path.c_str());
 	if (!file.is_open())
 	{

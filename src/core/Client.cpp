@@ -1,4 +1,5 @@
 #include "../../include/Client.hpp"
+#include "../../include/utils.hpp"
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
@@ -7,15 +8,6 @@
 #include <cstring>
 #include <sys/stat.h>
 #include <fstream>
-
-/* ---------------------------- Static functions ---------------------------- */
-static void	normalizeSlash(std::string& str)
-{
-	if (str[0] == '/')
-		str.erase(0, 1);
-	if (str[str.size() - 1] == '/')
-		str.erase(str.size() - 1);
-}
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
@@ -72,7 +64,7 @@ void	Client::parseMultipartIfNeeded()
 void	Client::buildErrorResponse(int code, const std::string& phrase)
 {
 	_response.setCodeStatus(code);
-	_response.setStatusPhrase(phrase);
+	_response.setPhraseStatus(phrase);
 	_response.buildError(*_server);
 	_status = ERROR;
 }
@@ -226,20 +218,11 @@ void	Client::handlePost(const Location& loc)
 		buildUploadFromPath(loc);
 	if (_status == ERROR)
 		return ;
-	
 	std::string	dirPath;
 	buildDirPath(loc, dirPath);
-	struct	stat st;
-	if (stat(dirPath.c_str(), &st) == 0)
-	{
-		if (S_ISDIR(st.st_mode))
-			std::cout << dirPath << " is dir" << std::endl;
-		if (S_ISREG(st.st_mode))
-		{
-			std::cout << "[ DEBUG ] " << dirPath << " is file" << std::endl;
-			buildErrorResponse(400, "Bad Request");
-		}
-	}
+	if (!isValidDirPath(dirPath))
+		return ;
+	postContent(dirPath);
 }
 
 void	Client::buildUploadFromPath(const Location& loc)
@@ -254,6 +237,7 @@ void	Client::buildUploadFromPath(const Location& loc)
 		upload.content.empty())
 			return buildErrorResponse(400, "Bad Request");
 	_request.path.erase(pos);
+	_request.uploads.push_back(upload);
 }
 
 void	Client::buildDirPath(const Location& loc, std::string& dirPath)
@@ -266,5 +250,48 @@ void	Client::buildDirPath(const Location& loc, std::string& dirPath)
 		normalizeSlash(root);
 		normalizeSlash(_request.path);
 		dirPath = root + '/' + _request.path;
+	}
+}
+
+bool	Client::isValidDirPath(const std::string& dirPath)
+{
+	struct	stat st;
+	int		code = 0;
+	
+	if (stat(dirPath.c_str(), &st) == -1)
+	{
+		if (errno == EACCES)
+			code = 403;
+		else if (errno == ENOENT)
+			code = 404;
+		else
+			code = 500;
+	}
+	else
+	{
+		if (!S_ISDIR(st.st_mode))
+			code = 404;
+		if (!(st.st_mode & S_IWUSR) || !(st.st_mode & S_IXUSR))
+			code = 403;
+	}
+	if (code == 403)
+		buildErrorResponse(403, "Forbidden");
+	else if (code == 404)
+		buildErrorResponse(404, "Not Found");
+	else if (code == 500)
+		buildErrorResponse(500, "Internal Server Error");
+	return (code == 0);
+}
+
+void	Client::postContent(const std::string& dirPath)
+{
+	for (size_t i = 0; i < _request.uploads.size(); i++)
+	{
+		std::string		fullPath = dirPath + '/' +  _request.uploads[i].filename;
+		std::ofstream	file(fullPath.c_str());
+
+		if (!file.is_open())
+			throw std::runtime_error("failed to open file");
+		file.write(_request.uploads[i].content.c_str(), _request.uploads[i].content.size());
 	}
 }
