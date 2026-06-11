@@ -1,9 +1,62 @@
 #include "../../include/HttpRequest.hpp"
 #include <sstream>
 #include <cctype>
+#include <iostream>
 
 HttpRequest::HttpRequest() : error_code(0) {}
 HttpRequest::~HttpRequest() {}
+
+void	HttpRequest::parseMultipart(const std::string& boundary)
+{
+	std::string	delimiter = "--" + boundary;
+	std::string	final_delimiter = delimiter + "--";
+	size_t		pos = body.find(delimiter);
+
+	while (pos != std::string::npos)
+	{
+		// skip past the delimiter line
+		size_t part_start = body.find("\r\n", pos);
+		if (part_start == std::string::npos)
+			return ;
+		part_start += 2;
+
+		// check if it's the final boundary
+		if (body.substr(pos, final_delimiter.size()) == final_delimiter)
+			return ;
+
+		// find end of part headers
+		size_t headers_end = body.find("\r\n\r\n", part_start);
+		if (headers_end == std::string::npos)
+			return ;
+
+		// extract part headers block
+		std::string	part_headers = body.substr(part_start, headers_end - part_start);
+
+		// extract content — between \r\n\r\n and next boundary
+		size_t content_start = headers_end + 4;
+		size_t next_boundary = body.find("\r\n" + delimiter, content_start);
+		if (next_boundary == std::string::npos)
+			return ;
+
+		UploadFile	file;
+		size_t fn_pos = part_headers.find("filename=\"");
+		if (fn_pos != std::string::npos)
+		{
+			fn_pos += 10;
+			size_t fn_end = part_headers.find("\"", fn_pos);
+			if (fn_end != std::string::npos)
+				file.filename = part_headers.substr(fn_pos, fn_end - fn_pos);
+		}
+		file.content = body.substr(content_start, next_boundary - content_start);
+		if (!file.content.empty() && !file.filename.empty() && isValidPath(file.filename))
+		{
+			uploads.push_back(file);
+			std::cout << "[DEBUG] upload: " << file.filename
+				  << " (" << file.content.size() << " bytes)" << std::endl;
+		}
+		pos = body.find(delimiter, next_boundary);
+	}
+}
 
 static void	trimLeft(std::string& str)
 {
@@ -54,7 +107,7 @@ void	HttpRequest::parse(const std::string& header)
 		error_code = 400;
 		return ;
 	}
-	if (uri.empty() || uri[0] != '/' || !isSafeUri(uri))
+	if (uri.empty() || uri[0] != '/' || !isValidPath(uri))
 	{
 		error_code = 400;
 		return ;
@@ -86,4 +139,4 @@ void	HttpRequest::parse(const std::string& header)
 	}
 }
 
-bool	HttpRequest::isSafeUri(const std::string uri) const	{ return (uri.find("..") == std::string::npos); }
+bool	HttpRequest::isValidPath(const std::string& uri) const	{ return (uri.find("..") == std::string::npos); }

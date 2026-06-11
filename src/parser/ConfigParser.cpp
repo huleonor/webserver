@@ -22,7 +22,7 @@ std::string ConfigParser::readFile(const std::string &filepath)
 
 void ConfigParser::parse(int argc, char **argv, ServerManager &manager)
 {
-    std::string config_path = (argc == 1 ? "configs/default.conf" : argv[1]);
+    std::string config_path = (argc == 1 ? "../../configs/default.conf" : argv[1]);
     std::string content = this->readFile(config_path);
     std::stringstream ss(content);
 
@@ -38,7 +38,6 @@ void ConfigParser::parse(int argc, char **argv, ServerManager &manager)
             _lines.push_back(line);
         }
     }
-
     buildServers(manager);
 }
 
@@ -111,7 +110,7 @@ void ConfigParser::parseLocationBlock(size_t &i, Location &location)
         const std::string &line = _lines[i];
 
         if (line.substr(0, 4) == "root")
-            location.setRoot(extractValue(line));
+    		location.setRoot(extractValue(line));
         else if (line.substr(0, 5) == "index")
             location.setIndex(extractValue(line));
         else if (line.substr(0, 9) == "autoindex")

@@ -2,6 +2,7 @@
 # define RESPONSE_HPP
 
 #include "ServerConfig.hpp"
+#include "HttpRequest.hpp"
 #include <string>
 #include <map>
 
@@ -30,7 +31,7 @@ public:
 	~Response();
 // Setters
 	void				setCodeStatus(int code);
-	void				setStatusPhrase(const std::string& phrase);
+	void				setPhraseStatus(const std::string& phrase);
 // Getters
 	const std::string&	getFirstLine() const;
 	const std::string&	getBody() const;
