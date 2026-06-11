@@ -33,6 +33,7 @@ Response::~Response() {}
 /* --------------------------------- Setter --------------------------------- */
 void	Response::setCodeStatus(int code)	{ _status_code = code; }
 void	Response::setStatusPhrase(const std::string& phrase)	{ _status_phrase = phrase; }
+void	Response::setBody(const std::string& body)	{ _body = body; }
 void	Response::setFullResponse()	{ _full_response = _first_line + _headers + _body; }
 
 void	Response::setFirstLine()
@@ -76,6 +77,25 @@ const std::string&	Response::getFirstLine() const		{ return (_first_line); }
 const std::string&	Response::getHeaders() const		{ return (_headers); }
 const std::string&	Response::getBody() const			{ return (_body); }
 const std::string&	Response::getFullResponse() const	{ return (_full_response); }
+
+void	Response::buildSuccess(const std::string& mimeType)
+{
+	setFirstLine();
+	std::ostringstream	oss;
+	oss << "Content-Type: " << mimeType << "\r\n"
+		<< "Content-Length: " << _body.size() << "\r\n\r\n";
+	_headers = oss.str();
+	setFullResponse();
+}
+
+void	Response::buildRedirect(const std::string& location)
+{
+	setFirstLine();
+	std::ostringstream	oss;
+	oss << "Location: " << location << "\r\nContent-Length: 0\r\n\r\n";
+	_headers = oss.str();
+	setFullResponse();
+}
 
 /* ----------------------------- Build responses ---------------------------- */
 void	Response::buildError(const ServerConfig& server)

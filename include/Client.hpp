@@ -45,6 +45,7 @@ private:
 	void				receiveBody(const std::string& request);
 	bool				hasCompleteBody();
 	void				parseMultipartIfNeeded();
+	void				buildAutoindex(const std::string& dirPath);
 
 public:
 // Constants
@@ -68,6 +69,7 @@ public:
 	void				setLastTimeActivity(time_t time);
 // Response
 	void				buildErrorResponse(int code, const std::string& phrase);
+	void				handleGet(const Location& loc);
 	void				sendResponse();
 // Request Handling
 	ssize_t				receiveData();
