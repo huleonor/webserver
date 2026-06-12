@@ -151,6 +151,40 @@ void	Client::handleGet(const Location& loc)
 	_status = WRITING;
 }
 
+/* ---------------------------------- DELETE --------------------------------- */
+void	Client::handleDelete(const Location& loc)
+{
+	if (_request.path.find("..") != std::string::npos)
+	{
+		buildErrorResponse(403, "Forbidden");
+		return ;
+	}
+
+	std::string	root   = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
+	std::string	target = root + _request.path;
+
+	struct stat	st;
+	if (stat(target.c_str(), &st) == -1)
+	{
+		buildErrorResponse(404, "Not Found");
+		return ;
+	}
+	if (S_ISDIR(st.st_mode))
+	{
+		buildErrorResponse(403, "Forbidden");
+		return ;
+	}
+	if (remove(target.c_str()) != 0)
+	{
+		buildErrorResponse(403, "Forbidden");
+		return ;
+	}
+	_response.setCodeStatus(204);
+	_response.setStatusPhrase("No Content");
+	_response.buildSuccess("");
+	_status = WRITING;
+}
+
 void	Client::buildAutoindex(const std::string& dirPath)
 {
 	DIR*			dir = opendir(dirPath.c_str());
