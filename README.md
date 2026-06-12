@@ -1,70 +1,45 @@
 # Common Core - HTTP Web Server
 
-A from-scratch HTTP/1.1 web server implementation in C++98 that handles concurrent client connections using I/O multiplexing (`select()`), without threads. Built as part of the 42 School curriculum.
+A from-scratch HTTP/1.1 web server implementation in C++98 that handles concurrent client connections using I/O multiplexing, without threads. Built as part of the 42 School curriculum.
 
-## Project Structure
+## Features
 
-This repository contains two implementations:
+| Feature | Description |
+|---------|-------------|
+| **Static file serving** | Serves HTML, CSS, JS, images, PDFs with correct MIME types |
+| **GET** | File serving, directory index, autoindex, HTTP redirects (301) |
+| **POST** | File uploads via multipart/form-data, chunked transfer encoding |
+| **DELETE** | Delete files from the server |
+| **CGI execution** | Runs Python (`.py`) and Bash (`.sh`) scripts via fork/exec |
+| **Autoindex** | Generates directory listing when no index file is present |
+| **Custom error pages** | Configurable per status code (404, 405, etc.) |
+| **Path traversal protection** | Blocks `..` in request paths |
+| **nginx-like configuration** | Server blocks, location blocks, routes, redirects |
+| **Non-blocking I/O** | Handles multiple clients simultaneously with `poll()` |
+| **Multiple ports** | Listen on multiple ports in the same config |
 
-| Project | Status | Description |
-|---------|--------|-------------|
-| `Webserv_42/` | Complete | Fully functional HTTP/1.1 server (~4300 LOC) |
-| `webserver/` | In Development | Refactored version with cleaner architecture |
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    Client1[HTTP Client] -->|TCP Connection| SM
-    Client2[HTTP Client] -->|TCP Connection| SM
-    Client3[HTTP Client] -->|TCP Connection| SM
+    Browser[Browser] -->|HTTP Request| Poll
 
-    subgraph Server["ServerManager (Event Loop)"]
-        SM[select - I/O Multiplexer]
-    end
-
-    SM -->|New Connection| Accept[Accept & Register FD]
-    SM -->|Read Ready| Parse[HttpRequest Parser]
-    SM -->|Write Ready| Send[Send Response]
-
-    Accept --> SM
-
-    Parse --> Route{Route Request}
-
-    Route -->|Static File| Response[Response Builder]
-    Route -->|CGI Script| CGI[CgiHandler]
-    Route -->|Directory| DirList[Directory Listing]
-    Route -->|Error| ErrPage[Error Page]
-
-    CGI -->|fork + exec| Script[External Script\n.py / .sh]
-    Script -->|stdout| CGI
-
-    CGI --> Response
-    DirList --> Response
-    ErrPage --> Response
-    Response --> Send
-    Send --> SM
-
-    subgraph Config["Configuration Layer"]
-        CP[ConfigParser] --> SC[ServerConfig]
-        SC --> Loc[Location Blocks]
-    end
-
-    Route -.->|Match host:port\n+ URI path| Config
+    Poll[poll - Event Loop] --> Receive[Receive & Parse Request]
+    Receive --> Route[Find Location]
+    Route --> Method{Method?}
+    Method -->|GET| GET[Serve File / Autoindex / Redirect]
+    Method -->|POST| POST[Upload File]
+    Method -->|DELETE| DELETE[Delete File]
+    Method -->|CGI| CGI[fork + exec script]
+    GET --> Build[Build Response]
+    POST --> Build
+    DELETE --> Build
+    CGI --> Build
+    Build --> Send[Send Response]
+    Send -->|HTTP Response| Browser
 ```
 
-## Features
-
-- **HTTP/1.1** compliant with keep-alive connections
-- **Methods**: GET, HEAD, POST, PUT, DELETE
-- **CGI execution** (Python, Shell scripts)
-- **Multiple virtual servers** on different ports
-- **Static file serving** with MIME type detection
-- **Directory listing** (autoindex)
-- **File uploads** via POST/PUT
-- **Chunked transfer encoding**
-- **Custom error pages**
-- **nginx-like configuration** syntax
 
 ## Configuration
 
@@ -108,14 +83,6 @@ make
 ./webserv
 ```
 
-### Makefile Targets
-
-| Target | Action |
-|--------|--------|
-| `make` | Compile the project |
-| `make clean` | Remove object files |
-| `make fclean` | Remove objects and binary |
-| `make re` | Full rebuild |
 
 ## Dependencies
 
@@ -128,73 +95,91 @@ None. The project uses only:
 ```mermaid
 classDiagram
     class ServerManager {
-        -fd_set read_fds
-        -fd_set write_fds
-        -vector~ServerConfig~ servers
-        +run()
-        +acceptConnection()
-        +handleRead()
-        +handleWrite()
+        -map~int, Client*~ _clients
+        -vector~pollfd~ _pfds
+        -vector~ServerConfig~ _servers
+        -bool _running
+        +setupServers()
+        +start()
+        +handleSignal()
     }
 
     class Client {
-        -int fd
-        -HttpRequest request
-        -Response response
-        +getRequest()
-        +buildResponse()
+        -int _client_socket
+        -ServerConfig* _server
+        -HttpRequest _request
+        -Response _response
+        -Status _status
+        -size_t _content_length
+        -ssize_t _bytes_sent
+        +receiveData()
+        +handleGet(Location)
+        +handlePost(Location)
+        +sendResponse()
+        +buildErrorResponse()
     }
 
     class HttpRequest {
-        -string method
-        -string uri
-        -map headers
-        -string body
-        +parse(buffer)
-        +isComplete()
+        +string method
+        +string path
+        +string query_string
+        +string version
+        +map~string, string~ headers
+        +string body
+        +int error_code
+        +vector~UploadFile~ uploads
+        +parse()
+        +parseMultipart()
     }
 
     class Response {
-        -int status_code
-        -map headers
-        -string body
-        +build()
-        +getResponse()
-    }
-
-    class CgiHandler {
-        -string script_path
-        -string interpreter
-        +execute()
-        +readOutput()
-    }
-
-    class ConfigParser {
-        -string config_path
-        +parse()
-        +getServers()
+        -int _status_code
+        -string _status_phrase
+        -string _headers
+        -string _body
+        -string _full_response
+        +buildSuccess(mimeType)
+        +buildRedirect(location)
+        +buildError(server)
     }
 
     class ServerConfig {
-        -int port
-        -string host
-        -string root
-        -vector~Location~ locations
-        +matchLocation(uri)
+        -uint16_t _port
+        -string _host
+        -string _root
+        -string _index
+        -vector~Location~ _locations
+        -map~int, string~ _error_pages
+        +findLocation(path)
     }
 
     class Location {
-        -string path
-        -vector methods
-        -bool autoindex
-        +isMethodAllowed()
+        -string _path
+        -string _root
+        -string _index
+        -string _return
+        -bool _autoindex
+        -vector~string~ _cgi_ext
+        -vector~string~ _cgi_path
+        +isValidMethod()
+    }
+
+    class ConfigParser {
+        -vector~string~ _lines
+        +parse()
+        +buildServers()
+    }
+
+    class UploadFile {
+        +string filename
+        +string content
     }
 
     ServerManager "1" --> "*" Client
     ServerManager "1" --> "*" ServerConfig
     Client "1" --> "1" HttpRequest
     Client "1" --> "1" Response
-    Response ..> CgiHandler
+    HttpRequest "1" --> "*" UploadFile
     ConfigParser --> ServerManager
     ServerConfig "1" --> "*" Location
 ```
@@ -221,9 +206,6 @@ curl -X POST -F "file=@test.txt" http://localhost:8080/upload/
 
 # CGI script
 curl http://localhost:8080/cgi-bin/calendar.sh
-
-# Stress test (requires siege)
-siege -b -c 100 -t 30S http://localhost:8080/
 ```
 
 ## How AI Was Used
@@ -247,10 +229,3 @@ The `webserver/` refactor used AI to identify structural improvements over `Webs
 
 > **Note**: All final code was written, reviewed, and tested by the developers. AI was used as a reference and reasoning tool, not as a code generator.
 
-## Constraints
-
-- Written in **C++98** (no C++11 or later features)
-- **No external libraries** allowed
-- **No threads** — concurrency via `select()` only
-- Must never crash or hang under any circumstances
-- Compiled with `-Wall -Wextra -Werror`
