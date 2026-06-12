@@ -3,9 +3,12 @@
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <cerrno>
 #include <unistd.h>
 #include <cstring>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <sys/stat.h>
 #include <fstream>
 
@@ -64,9 +67,118 @@ void	Client::parseMultipartIfNeeded()
 void	Client::buildErrorResponse(int code, const std::string& phrase)
 {
 	_response.setCodeStatus(code);
-	_response.setPhraseStatus(phrase);
+	_response.setStatusPhrase(phrase);
 	_response.buildError(*_server);
 	_status = ERROR;
+}
+
+static std::string	getMimeType(const std::string& path)
+{
+	size_t dot = path.rfind('.');
+	if (dot == std::string::npos)
+		return "application/octet-stream";
+	std::string ext = path.substr(dot);
+	if (ext == ".html" || ext == ".htm")	return "text/html";
+	if (ext == ".css")						return "text/css";
+	if (ext == ".js")						return "application/javascript";
+	if (ext == ".json")						return "application/json";
+	if (ext == ".png")						return "image/png";
+	if (ext == ".jpg" || ext == ".jpeg")	return "image/jpeg";
+	if (ext == ".gif")						return "image/gif";
+	if (ext == ".ico")						return "image/x-icon";
+	if (ext == ".txt")						return "text/plain";
+	if (ext == ".pdf")						return "application/pdf";
+	return "application/octet-stream";
+}
+
+void	Client::handleGet(const Location& loc)
+{
+	// 1. bloquear path traversal
+	if (_request.path.find("..") != std::string::npos)
+	{
+		buildErrorResponse(403, "Forbidden");
+		return ;
+	}
+
+	// 2. redirect
+	if (!loc.getReturn().empty())
+	{
+		_response.setCodeStatus(301);
+		_response.setStatusPhrase("Moved Permanently");
+		_response.buildRedirect(loc.getReturn());
+		_status = WRITING;
+		return ;
+	}
+
+	std::string	root   = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
+	std::string	target = root + _request.path;
+
+	struct stat	st;
+	if (stat(target.c_str(), &st) == 0 && S_ISDIR(st.st_mode) && target[target.size() - 1] != '/')
+		target += '/';
+
+	if (!target.empty() && target[target.size() - 1] == '/')
+	{
+		std::string	index = loc.getIndex().empty() ? _server->getIndex() : loc.getIndex();
+		std::ifstream	test((target + index).c_str());
+		if (test.is_open())
+			target += index;
+		else if (loc.getAutoindex())
+		{
+			buildAutoindex(target);
+			return ;
+		}
+		else
+		{
+			buildErrorResponse(403, "Forbidden");
+			return ;
+		}
+	}
+
+	std::ifstream	file(target.c_str(), std::ios::binary);
+	if (!file.is_open())
+	{
+		buildErrorResponse(404, "Not Found");
+		return ;
+	}
+	std::ostringstream	ss;
+	ss << file.rdbuf();
+
+	_response.setCodeStatus(200);
+	_response.setStatusPhrase("OK");
+	_response.setBody(ss.str());
+	_response.buildSuccess(getMimeType(target));
+	_status = WRITING;
+}
+
+void	Client::buildAutoindex(const std::string& dirPath)
+{
+	DIR*			dir = opendir(dirPath.c_str());
+	if (!dir)
+	{
+		buildErrorResponse(403, "Forbidden");
+		return ;
+	}
+	std::ostringstream	html;
+	html << "<html><head><title>Index of " << _request.path << "</title></head>"
+		 << "<body><h1>Index of " << _request.path << "</h1><hr><ul>";
+
+	struct dirent*	entry;
+	while ((entry = readdir(dir)) != NULL)
+	{
+		std::string name = entry->d_name;
+		if (name == ".")
+			continue ;
+		html << "<li><a href=\"" << _request.path << name << "\">" << name << "</a></li>";
+	}
+	closedir(dir);
+	html << "</ul><hr></body></html>";
+
+	_response.setCodeStatus(200);
+	_response.setStatusPhrase("OK");
+	_response.setBody(html.str());
+	_response.buildSuccess("text/html");
+	_status = WRITING;
 }
 
 void	Client::sendResponse()
@@ -171,34 +283,27 @@ void	Client::receiveBody(const std::string& request)
 			if (_status != ERROR)
 				_status = PROCESSING;
 		}
+		return ;
 	}
-	else
+	while (!_request_buffer.empty())
 	{
-		// chunked transfer encoding
-		while (!_request_buffer.empty())
+		size_t pos = _request_buffer.find("\r\n");
+		if (pos == std::string::npos)
+			return ;
+		size_t chunk_size;
+		std::istringstream ss(_request_buffer.substr(0, pos));
+		ss >> std::hex >> chunk_size;
+		if (chunk_size == 0)
 		{
-			size_t pos = _request_buffer.find("\r\n");
-			if (pos == std::string::npos)
-				return ;
-			size_t chunk_size;
-			std::istringstream ss(_request_buffer.substr(0, pos));
-			ss >> std::hex >> chunk_size;
-			if (chunk_size == 0)
-			{
-				parseMultipartIfNeeded();
-				if (_status != ERROR)
-					_status = PROCESSING;
-				// tmp: verify chunked body was assembled correctly
-				std::cout << "[DEBUG] chunked body complete: \"" << _request.body << "\"" << std::endl;
-				return ;
-			}
-			if (_request_buffer.size() < pos + 2 + chunk_size + 2)
-				return ;
-			_request.body += _request_buffer.substr(pos + 2, chunk_size);
-			// tmp: print each chunk as it's extracted
-			std::cout << "[DEBUG] chunk extracted: \"" << _request_buffer.substr(pos + 2, chunk_size) << "\"" << std::endl;
-			_request_buffer.erase(0, pos + 2 + chunk_size + 2);
+			parseMultipartIfNeeded();
+			if (_status != ERROR)
+				_status = PROCESSING;
+			return ;
 		}
+		if (_request_buffer.size() < pos + 2 + chunk_size + 2)
+			return ;
+		_request.body += _request_buffer.substr(pos + 2, chunk_size);
+		_request_buffer.erase(0, pos + 2 + chunk_size + 2);
 	}
 }
 

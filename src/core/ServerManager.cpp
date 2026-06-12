@@ -169,7 +169,7 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 			return closeConnection(pfds_pos, "");
 		if (it->second->getStatus() == Client::PROCESSING)
 			processClientRequest(*it->second);
-		if (it->second->getStatus() == Client::ERROR)
+		if (it->second->getStatus() == Client::WRITING || it->second->getStatus() == Client::ERROR)
 			_pfds[pfds_pos].events = POLLOUT;
 	}
 	catch(const std::exception& e)
@@ -204,7 +204,7 @@ void	ServerManager::processClientRequest(Client& client)
 	// if (!loc.getCgiExt().empty() && !loc.getCgiPath().empty())
 	// return	handleCGI();
 	if (client.getRequest().method == "GET")
-		std::cout << "handle get\n"; ////////tmp
+		client.handleGet(*location);
 	else if (client.getRequest().method == "POST")
 		client.handlePost(*location);
 	else

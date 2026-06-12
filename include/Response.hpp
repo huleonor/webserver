@@ -31,13 +31,16 @@ public:
 	~Response();
 // Setters
 	void				setCodeStatus(int code);
-	void				setPhraseStatus(const std::string& phrase);
+	void				setStatusPhrase(const std::string& phrase);
+	void				setBody(const std::string& body);
 // Getters
 	const std::string&	getFirstLine() const;
 	const std::string&	getBody() const;
 	const std::string&	getHeaders() const;
 	const std::string&	getFullResponse() const;
 // Build Response
+	void				buildSuccess(const std::string& mimeType);
+	void				buildRedirect(const std::string& location);
 	void				buildError(const ServerConfig& server);
 };
 

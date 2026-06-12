@@ -45,6 +45,7 @@ private:
 	void				receiveBody(const std::string& request);
 	bool				hasCompleteBody();
 	void				parseMultipartIfNeeded();
+	void				buildAutoindex(const std::string& dirPath);
 	void				buildUploadFromPath(const Location& loc);
 	void				buildDirPath(const Location& loc, std::string& dirPath);
 	bool				isValidDirPath(const std::string& dirPath);
@@ -72,6 +73,7 @@ public:
 	void				setLastTimeActivity(time_t time);
 // Response
 	void				buildErrorResponse(int code, const std::string& phrase);
+	void				handleGet(const Location& loc);
 	void				sendResponse();
 // Request Handling
 	ssize_t				receiveData();
