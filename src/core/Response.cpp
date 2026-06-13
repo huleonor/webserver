@@ -3,6 +3,7 @@
 #include "../../include/utils.hpp"
 #include <sstream>
 #include <fstream>
+#include <iostream>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Response::Response() : _status_code(0) {}
@@ -71,7 +72,9 @@ void	Response::setHeaders()
 {
 	std::ostringstream	oss;
 
-	oss << "Content-Type: text/html\r\n" << "Content-Length: " << _body.size() << "\r\n" << "\r\n";
+	oss << "Content-Type: text/html\r\n" 
+		<< "Content-Length: " << _body.size() 
+		<< "\r\n" << "\r\n";
 	_headers = oss.str();
 }
 

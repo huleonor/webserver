@@ -75,7 +75,7 @@ void	ServerManager::setupServers()
 			pfd.events = POLLIN;
 			_pfds.push_back(pfd);
 		}
-		catch(const std::exception& e)	{ std::cerr << "\033[31mError: " << e.what() << "\033[0m\n"; }
+		catch(const std::exception& e)	{ std::cerr << "\033[31m[Error]: " << e.what() << "\033[0m\n"; }
 	}
 	if (_pfds.empty())
 		throw std::runtime_error("no servers available, cannot continue");
@@ -87,8 +87,9 @@ bool	ServerManager::isServerSocket(size_t pos)	{ return (pos < _servers.size());
 void	ServerManager::start()
 {
 	for (size_t i = 0; i < _servers.size(); i++)
-		std::cout << "\033[33m[Server: " << _servers[i].getHost() 
-			<< ":" << _servers[i].getPort() << "] Server running...\033[0m" << std::endl;
+		std::cout << "\033[33m[Server: " << _servers[i].getServerName() << ":" 
+		<< _servers[i].getHost() << ":" << _servers[i].getPort() 
+		<< "] Server running...\033[0m\n" << std::endl;
 	while(_running)
 	{
 		int	num_events = poll(&_pfds[0], _pfds.size(), 60000);
@@ -110,7 +111,7 @@ void	ServerManager::monitorClients()
 	{
 		client_it	it = _clients.find(_pfds[i].fd);
 		if (time(NULL) - it->second->getLastTimeActivity() >= 60)
-			closeConnection(i, "");
+			closeConnection(i, "timeout");
 	}
 }
 
@@ -183,6 +184,15 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 void	ServerManager::handleClientResponse(size_t& pfds_pos)
 {
 	client_it	it = _clients.find(_pfds[pfds_pos].fd);
+	const HttpRequest&	request = it->second->getRequest();
+	const Response&	response = it->second->getResponse();
+
+
+	struct	in_addr	tmp;
+	tmp.s_addr = it->second->getClientAddr();
+	std::string	addr = inet_ntoa(tmp);
+	int	port = ntohs(it->second->getClientPort());
+
 	it->second->sendResponse();
 	std::string	msg = "";
 	if (it->second->getStatus() == Client::ERROR)
@@ -190,12 +200,28 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 		msg = "send failed: " + std::string(strerror(errno));
 		it->second->setStatus(Client::CLOSE);
 	}
+	std::cout << "[RESPONSE]: " << addr + ":" << port << " | "
+			<< request.method + " "
+			<< request.path + " "
+			<< request.version << " -> "
+			<< response.getFirstLine();
 	if (it->second->getStatus() == Client::CLOSE)
 		closeConnection(pfds_pos, msg);
 }
 
 void	ServerManager::processClientRequest(Client& client)
 {
+	struct	in_addr	tmp;
+	tmp.s_addr = client.getClientAddr();
+	std::string	addr = inet_ntoa(tmp);
+	int	port = ntohs(client.getClientPort());
+	const HttpRequest&	request = client.getRequest();
+
+	std::cout << "[REQUEST]: " << addr + ":" << port << " | "
+			<< request.method + " "
+			<< request.path + " "
+			<< request.version << std::endl;
+
 	const Location*	location = client.getClientServer()->findLocation(client.getRequest().path);
 	if (location == NULL)
 		return client.buildErrorResponse(404, "Not Found");
@@ -211,7 +237,7 @@ void	ServerManager::processClientRequest(Client& client)
 	else if (client.getRequest().method == "POST")
 		client.handlePost(*location);
 	else if (client.getRequest().method == "DELETE")
-		client.handleDelete(*location);
+		client.handleDelete();
 }
 
 void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
@@ -226,10 +252,15 @@ void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
 	_clients.erase(_pfds[pfds_pos].fd);
 	_pfds.erase(_pfds.begin() + pfds_pos);
 	pfds_pos--;
-	if (!msg.empty())
-		std::cout << "[ERROR] " << msg << std::endl;
+	std::string	reason;
+	if (msg.empty())
+		reason = "closed by client";
+	else if (msg == "timeout")
+		 reason = "timeout";
+	else
+		reason = "error: " + msg;
 	std::cout << "\033[31m[INFO]: " <<  addr << ":" 
-			  << port  << " | disconnected\033[0m" 
+			  << port  << " | disconnected (" << reason << ")\033[0m" 
 			  << std::endl;
 }
 
@@ -237,6 +268,7 @@ void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
 void	ServerManager::handleSignal(int sig)
 {
 	(void)sig;
-	std::cout << std::endl;
+	const char msg[] = "\033[31m\n[INFO]: Server stopped by signal\033[0m\n";
+    write(STDOUT_FILENO, msg, sizeof(msg) - 1);
 	_running = false;
 }

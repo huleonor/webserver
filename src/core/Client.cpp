@@ -9,7 +9,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <sys/stat.h>
+#include <arpa/inet.h>
 #include <fstream>
 #include <algorithm>
 
@@ -42,7 +42,8 @@ in_port_t			Client::getClientPort() const	{ return (_client_port); }
 in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
 Client::Status		Client::getStatus() const		{ return (_status); }
 const HttpRequest&	Client::getRequest() const		{ return (_request); }
-const std::string&	Client::getResponse() const		{ return (_response.getFullResponse()); }
+const Response&		Client::getResponse() const 	{ return (_response); }
+const std::string&	Client::getFullResponse() const		{ return (_response.getFullResponse()); }
 const ServerConfig*	Client::getClientServer() const { return (_server); }
 ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
 time_t				Client::getLastTimeActivity() const { return (_last_time_activity); }
@@ -143,19 +144,10 @@ void	Client::handleGet(const Location& loc)
 }
 
 /* ---------------------------------- DELETE --------------------------------- */
-void	Client::handleDelete(const Location& loc)
+void	Client::handleDelete()
 {
-	if (_request.path.find("..") != std::string::npos)
-	{
-		buildErrorResponse(403, "Forbidden");
-		return ;
-	}
-
-	std::string	root   = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
-	std::string	target = root + _request.path;
-
 	struct stat	st;
-	if (stat(target.c_str(), &st) == -1)
+	if (stat(_request.path.c_str(), &st) == -1)
 	{
 		buildErrorResponse(404, "Not Found");
 		return ;
@@ -165,11 +157,12 @@ void	Client::handleDelete(const Location& loc)
 		buildErrorResponse(403, "Forbidden");
 		return ;
 	}
-	if (remove(target.c_str()) != 0)
+	if (remove(_request.path.c_str()) != 0)
 	{
 		buildErrorResponse(403, "Forbidden");
 		return ;
 	}
+	std::cout << "[DELETE]: " << _request.path << std::endl;
 	_response.setCodeStatus(204);
 	_response.setStatusPhrase("No Content");
 	_response.buildSuccess("");
@@ -369,12 +362,15 @@ void	Client::handlePost(const Location& loc)
 		_request.path = loc.getUploadPath();
 	if (_status == ERROR)
 		return ;
-	std::string	dirPath;
-	_request.path = dirPath;
-	_request.isValidPath();
+	_request.isWithinRoot();
 	if (!isValidDirPath())
 		return ;
 	postContent();
+	_response.setCodeStatus(201);
+	_response.setStatusPhrase("Created");
+	_response.setBody("");
+	_response.buildSuccess("text/html");
+	_status = WRITING;
 }
 
 void	Client::buildUploadFromPath(const Location& loc)
@@ -382,12 +378,14 @@ void	Client::buildUploadFromPath(const Location& loc)
 	UploadFile	upload;
 	size_t	pos = _request.path.find_last_of('/');
 
-	upload.filename = _request.path.substr(pos + 1);
+	if (pos != std::string::npos)
+		upload.filename = _request.path.substr(pos + 1);
 	upload.content = _request.body;
 	if (upload.filename == loc.getPath().substr(1) ||
 		upload.filename.empty())
 			return buildErrorResponse(400, "Bad Request");
-	_request.path.erase(pos);
+	if (pos != std::string::npos)
+		_request.path.erase(pos);
 	_request.uploads.push_back(upload);
 }
 
@@ -431,10 +429,14 @@ void	Client::postContent()
 		if (!file.is_open())
 			throw std::runtime_error("failed to open file");
 		file.write(_request.uploads[i].content.c_str(), _request.uploads[i].content.size());
+		struct in_addr tmp;
+		tmp.s_addr = _client_addr;
+		std::cout << "[UPLOAD]: " << inet_ntoa(tmp) << ":" << ntohs(_client_port)
+				<< " | file: " << _request.uploads[i].filename
+				<< " | size: " << _request.uploads[i].content.size() << " bytes" 
+				<< std::endl;
 	}
 }
-
-
 
 void	Client::validateAndReplacePath(const Location& loc)
 {
@@ -442,7 +444,6 @@ void	Client::validateAndReplacePath(const Location& loc)
 	normalizeSlash(root);
 	_request.path = root + _request.path;
 	normalizeSlash(_request.path);
-	if (!_request.isValidPath())
+	if (!_request.isWithinRoot())
 		buildErrorResponse(403, "Forbidden");
 }
-
