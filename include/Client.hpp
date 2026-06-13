@@ -76,6 +76,7 @@ public:
 	void				handleGet(const Location& loc);
 	void				handlePost(const Location& loc);
 	void				handleDelete(const Location& loc);
+	void				handleCGI(const Location& loc);
 	void				sendResponse();
 	void				validateAndReplacePath(const Location& loc);
 // Request Handling
