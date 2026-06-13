@@ -63,7 +63,8 @@ public:
 	in_addr_t			getClientAddr() const;
 	Status				getStatus() const;
 	const HttpRequest&	getRequest() const;
-	const std::string&	getResponse() const;
+	const Response&		getResponse() const;
+	const std::string&	getFullResponse() const;
 	const ServerConfig*	getClientServer() const;
 	ssize_t				getBytesSent() const;
 	time_t				getLastTimeActivity() const;
@@ -75,7 +76,7 @@ public:
 	void				buildErrorResponse(int code, const std::string& phrase);
 	void				handleGet(const Location& loc);
 	void				handlePost(const Location& loc);
-	void				handleDelete(const Location& loc);
+	void				handleDelete();
 	void				sendResponse();
 	void				validateAndReplacePath(const Location& loc);
 // Request Handling

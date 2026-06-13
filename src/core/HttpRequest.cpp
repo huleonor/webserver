@@ -49,11 +49,7 @@ void	HttpRequest::parseMultipart(const std::string& boundary)
 		}
 		file.content = body.substr(content_start, next_boundary - content_start);
 		if (!file.filename.empty() && file.filename.find("..") == std::string::npos)
-		{
 			uploads.push_back(file);
-			std::cout << "[DEBUG] upload: " << file.filename
-				  << " (" << file.content.size() << " bytes)" << std::endl;
-		}
 		pos = body.find(delimiter, next_boundary);
 	}
 }
@@ -90,6 +86,7 @@ void	HttpRequest::parse(const std::string& header)
 	size_t pos2 = line.rfind(' ');
 	if (pos1 == std::string::npos || pos1 == pos2)
 	{
+		std::cerr << "[WARN]: malformed request line: " << line << std::endl;
 		error_code = 400;
 		return ;
 	}
@@ -99,6 +96,7 @@ void	HttpRequest::parse(const std::string& header)
 
 	if (method != "GET" && method != "POST" && method != "DELETE")
 	{
+		std::cerr << "[WARN]: unsupported method: " << method << std::endl;
 		error_code = 501;
 		return ;
 	}
@@ -139,7 +137,7 @@ void	HttpRequest::parse(const std::string& header)
 	}
 }
 
-bool	HttpRequest::isValidPath() const	
+bool	HttpRequest::isWithinRoot() const	
 { 
 	std::stringstream	ss(path);
 	std::vector<std::string>	segments;
