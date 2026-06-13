@@ -162,7 +162,10 @@ void	Client::handleDelete()
 		buildErrorResponse(403, "Forbidden");
 		return ;
 	}
-	std::cout << "[DELETE]: " << _request.path << std::endl;
+	struct in_addr tmp;
+	tmp.s_addr = _client_addr;
+	std::cout << "[DELETE]: " << inet_ntoa(tmp) << ":" << ntohs(_client_port)
+			  << " | file: " << _request.line_request << std::endl;
 	_response.setCodeStatus(204);
 	_response.setStatusPhrase("No Content");
 	_response.buildSuccess("");
@@ -249,6 +252,10 @@ void	Client::receiveHeader(const std::string& request)
 		std::string	header = _request_buffer.substr(0, pos);
 		_request_buffer.erase(0, pos + 4);
 		_request.parse(header);
+		struct in_addr tmp;
+		tmp.s_addr = _client_addr;
+		std::cout << "[REQUEST]: " << inet_ntoa(tmp) << ":" << ntohs(_client_port)
+				  << " | " << _request.line_request << std::endl;
 		if (_request.error_code != 0)
 		{
 			if (_request.error_code == 501)
@@ -356,13 +363,12 @@ void	Client::handlePost(const Location& loc)
 {
 	if (_request.uploads.size() == 0)
 		buildUploadFromPath(loc);
-	if (loc.getUploadPath().empty())
-		buildErrorResponse(403, "Forbidden");
-	else
-		_request.path = loc.getUploadPath();
 	if (_status == ERROR)
 		return ;
-	_request.isWithinRoot();
+	if (loc.getUploadPath().empty())
+		return buildErrorResponse(403, "Forbidden");
+	else
+		_request.path = loc.getUploadPath();
 	if (!isValidDirPath())
 		return ;
 	postContent();
@@ -382,7 +388,7 @@ void	Client::buildUploadFromPath(const Location& loc)
 		upload.filename = _request.path.substr(pos + 1);
 	upload.content = _request.body;
 	if (upload.filename == loc.getPath().substr(1) ||
-		upload.filename.empty())
+		upload.filename.empty() || upload.content.empty())
 			return buildErrorResponse(400, "Bad Request");
 	if (pos != std::string::npos)
 		_request.path.erase(pos);

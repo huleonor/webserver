@@ -14,6 +14,7 @@ struct UploadFile
 struct HttpRequest
 {
 	std::string							method;
+	std::string							line_request;
 	std::string							path;
 	std::string							query_string;
 	std::string							version;

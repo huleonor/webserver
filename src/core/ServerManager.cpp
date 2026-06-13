@@ -1,15 +1,22 @@
 #include "../../include/ServerManager.hpp"
-#include <sys/socket.h>   
-#include <netinet/in.h>   
-#include <arpa/inet.h>  
-#include <unistd.h>   
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include <iostream>
-#include <fcntl.h> 
-#include <poll.h>     
-#include <cstring>      
-#include <cerrno>        
-#include <stdexcept> 
+#include <fcntl.h>
+#include <poll.h>
+#include <cstring>
+#include <cerrno>
+#include <stdexcept>
 #include <algorithm>
+
+static std::string	toAddrStr(in_addr_t addr)
+{
+	struct in_addr tmp;
+	tmp.s_addr = addr;
+	return inet_ntoa(tmp);
+}
 
 /* ---------------------------- Member Attributes --------------------------- */
 bool	ServerManager::_running = true;
@@ -75,7 +82,7 @@ void	ServerManager::setupServers()
 			pfd.events = POLLIN;
 			_pfds.push_back(pfd);
 		}
-		catch(const std::exception& e)	{ std::cerr << "\033[31m[Error]: " << e.what() << "\033[0m\n"; }
+		catch(const std::exception& e)	{ std::cerr << "\033[31m[ERROR]: " << e.what() << "\033[0m\n"; }
 	}
 	if (_pfds.empty())
 		throw std::runtime_error("no servers available, cannot continue");
@@ -149,11 +156,8 @@ void	ServerManager::acceptNewClient(size_t pfds_pos)
 		pfd.fd = client_fd;
 		pfd.events = POLLIN;
 		_pfds.push_back(pfd);
-		std::cout << "\033[32m[INFO]: " 
-				  << inet_ntoa(addr.sin_addr) << ":" 
-				  << ntohs(addr.sin_port) 
-				  << " | connected\033[0m" 
-				  << std::endl;
+		std::cout << "\033[32m[INFO]: " << toAddrStr(addr.sin_addr.s_addr) << ":"
+				  << ntohs(addr.sin_port) << " | connected\033[0m" << std::endl;
 	}
 }
 
@@ -187,11 +191,8 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 	const HttpRequest&	request = it->second->getRequest();
 	const Response&	response = it->second->getResponse();
 
-
-	struct	in_addr	tmp;
-	tmp.s_addr = it->second->getClientAddr();
-	std::string	addr = inet_ntoa(tmp);
-	int	port = ntohs(it->second->getClientPort());
+	std::string	addr = toAddrStr(it->second->getClientAddr());
+	int			port = ntohs(it->second->getClientPort());
 
 	it->second->sendResponse();
 	std::string	msg = "";
@@ -200,28 +201,14 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 		msg = "send failed: " + std::string(strerror(errno));
 		it->second->setStatus(Client::CLOSE);
 	}
-	std::cout << "[RESPONSE]: " << addr + ":" << port << " | "
-			<< request.method + " "
-			<< request.path + " "
-			<< request.version << " -> "
-			<< response.getFirstLine();
+	std::cout << "[RESPONSE]: " << addr << ":" << port << " | Request:"
+			<< request.line_request << " -> " << response.getFirstLine();
 	if (it->second->getStatus() == Client::CLOSE)
 		closeConnection(pfds_pos, msg);
 }
 
 void	ServerManager::processClientRequest(Client& client)
 {
-	struct	in_addr	tmp;
-	tmp.s_addr = client.getClientAddr();
-	std::string	addr = inet_ntoa(tmp);
-	int	port = ntohs(client.getClientPort());
-	const HttpRequest&	request = client.getRequest();
-
-	std::cout << "[REQUEST]: " << addr + ":" << port << " | "
-			<< request.method + " "
-			<< request.path + " "
-			<< request.version << std::endl;
-
 	const Location*	location = client.getClientServer()->findLocation(client.getRequest().path);
 	if (location == NULL)
 		return client.buildErrorResponse(404, "Not Found");
@@ -242,12 +229,9 @@ void	ServerManager::processClientRequest(Client& client)
 
 void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
 {
-	struct	in_addr	tmp;
 	client_it	it = _clients.find(_pfds[pfds_pos].fd);
-
-	tmp.s_addr = it->second->getClientAddr();
-	std::string	addr = inet_ntoa(tmp);
-	int	port = ntohs(it->second->getClientPort());
+	std::string	addr = toAddrStr(it->second->getClientAddr());
+	int			port = ntohs(it->second->getClientPort());
 	delete it->second;
 	_clients.erase(_pfds[pfds_pos].fd);
 	_pfds.erase(_pfds.begin() + pfds_pos);

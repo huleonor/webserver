@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 		}
 		catch (std::exception &e)
 		{
-			std::cerr << "\033[31m[Error]: " << e.what() << "\033[0m\n";
+			std::cerr << "\033[31m[ERROR]: " << e.what() << "\033[0m\n";
 			return 1;
 		}
 	}

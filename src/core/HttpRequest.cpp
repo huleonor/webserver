@@ -48,7 +48,7 @@ void	HttpRequest::parseMultipart(const std::string& boundary)
 				file.filename = part_headers.substr(fn_pos, fn_end - fn_pos);
 		}
 		file.content = body.substr(content_start, next_boundary - content_start);
-		if (!file.filename.empty() && file.filename.find("..") == std::string::npos)
+		if (!file.filename.empty() && !file.content.empty() && file.filename.find("..") == std::string::npos)
 			uploads.push_back(file);
 		pos = body.find(delimiter, next_boundary);
 	}
@@ -82,11 +82,11 @@ void	HttpRequest::parse(const std::string& header)
 	if (!line.empty() && line[line.size() - 1] == '\r')
 		line.erase(line.size() - 1);
 
+	line_request = line;
 	size_t pos1 = line.find(' ');
 	size_t pos2 = line.rfind(' ');
 	if (pos1 == std::string::npos || pos1 == pos2)
 	{
-		std::cerr << "[WARN]: malformed request line: " << line << std::endl;
 		error_code = 400;
 		return ;
 	}
@@ -96,7 +96,6 @@ void	HttpRequest::parse(const std::string& header)
 
 	if (method != "GET" && method != "POST" && method != "DELETE")
 	{
-		std::cerr << "[WARN]: unsupported method: " << method << std::endl;
 		error_code = 501;
 		return ;
 	}
