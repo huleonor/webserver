@@ -75,6 +75,7 @@ public:
 	void				buildErrorResponse(int code, const std::string& phrase);
 	void				handleGet(const Location& loc);
 	void				handleDelete(const Location& loc);
+	void				handleCGI(const Location& loc);
 	void				sendResponse();
 // Request Handling
 	ssize_t				receiveData();

@@ -201,8 +201,8 @@ void	ServerManager::processClientRequest(Client& client)
 		return client.buildErrorResponse(404, "Not Found");
 	if (location->isValidMethod(client.getRequest().method) == false)
 		return client.buildErrorResponse(405, "Method Not Allowed");
-	// if (!loc.getCgiExt().empty() && !loc.getCgiPath().empty())
-	// return	handleCGI();
+	if (!location->getCgiExt().empty() && !location->getCgiPath().empty())
+		return client.handleCGI(*location);
 	if (client.getRequest().method == "GET")
 		client.handleGet(*location);
 	else if (client.getRequest().method == "POST")

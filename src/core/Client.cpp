@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/stat.h>
 #include <fstream>
+#include <algorithm>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
@@ -349,6 +350,23 @@ bool	Client::hasCompleteBody()
 		return (true);
 	}
 	return (false);
+}
+
+void	Client::handleCGI(const Location& loc)
+{
+	size_t	dot = _request.path.rfind('.');
+	if (dot == std::string::npos)
+	{
+		buildErrorResponse(403, "Forbidden");
+		return ;
+	}
+	std::string	ext = _request.path.substr(dot);
+	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
+	if (std::find(cgi_exts.begin(), cgi_exts.end(), ext) == cgi_exts.end())
+	{
+		buildErrorResponse(403, "Forbidden");
+		return ;
+	}
 }
 
 void	Client::handlePost(const Location& loc)
