@@ -211,8 +211,8 @@ void	ServerManager::processClientRequest(Client& client)
 		client.handleGet(*location);
 	else if (client.getRequest().method == "POST")
 		client.handlePost(*location);
-	else
-		std::cout << "handle delete\n"; ////////tmp
+	else if (client.getRequest().method == "DELETE")
+		client.handleDelete(*location);
 }
 
 void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)

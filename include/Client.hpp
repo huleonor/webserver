@@ -75,6 +75,7 @@ public:
 	void				buildErrorResponse(int code, const std::string& phrase);
 	void				handleGet(const Location& loc);
 	void				handlePost(const Location& loc);
+	void				handleDelete(const Location& loc);
 	void				sendResponse();
 	void				validateAndReplacePath(const Location& loc);
 // Request Handling
