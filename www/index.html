@@ -48,6 +48,48 @@
         li:last-child { border-bottom: none; }
 
         strong { color: #e0e0e0; }
+
+        .upload-form { display: flex; flex-direction: column; gap: 1rem; }
+
+        .file-drop {
+            border: 2px dashed #2a2a4a;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .file-drop:hover, .file-drop.drag-over {
+            border-color: #7c6af7;
+            background: #16162a;
+            color: #e0e0e0;
+        }
+
+        .file-drop input[type="file"] { display: none; }
+
+        .file-name { font-size: 0.85rem; color: #7c6af7; margin-top: 0.5rem; min-height: 1.2em; }
+
+        .btn {
+            background: #7c6af7;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.7rem 1.5rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background: #5a49d6; }
+        .btn:disabled { background: #3a3a5a; cursor: not-allowed; }
+
+        .upload-msg { font-size: 0.85rem; min-height: 1.2em; text-align: center; }
+        .upload-msg.ok { color: #4caf50; }
+        .upload-msg.err { color: #f44336; }
     </style>
 </head>
 <body>
@@ -72,11 +114,75 @@
                     <li>Time: <strong id="time"></strong></li>
                 </ul>
             </div>
+            <div class="card">
+                <h2>Upload File</h2>
+                <form class="upload-form" id="uploadForm">
+                    <label class="file-drop" id="dropZone">
+                        <input type="file" id="fileInput">
+                        <span id="dropText">Click or drag a file here</span>
+                        <div class="file-name" id="fileName"></div>
+                    </label>
+                    <button type="submit" class="btn" id="uploadBtn" disabled>Send (POST)</button>
+                    <div class="upload-msg" id="uploadMsg"></div>
+                </form>
+            </div>
         </main>
     </div>
     <script>
         document.getElementById('path').textContent = window.location.pathname;
         document.getElementById('time').textContent = new Date().toLocaleTimeString();
+
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileName = document.getElementById('fileName');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadMsg = document.getElementById('uploadMsg');
+        const uploadForm = document.getElementById('uploadForm');
+
+        function setFile(file) {
+            fileName.textContent = file ? file.name : '';
+            uploadBtn.disabled = !file;
+            uploadMsg.textContent = '';
+            uploadMsg.className = 'upload-msg';
+        }
+
+        fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) { fileInput.files = e.dataTransfer.files; setFile(file); }
+        });
+
+        uploadForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const file = fileInput.files[0];
+            if (!file) return;
+            uploadBtn.disabled = true;
+            uploadMsg.textContent = 'Sending...';
+            uploadMsg.className = 'upload-msg';
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                if (res.ok) {
+                    uploadMsg.textContent = 'File sent successfully!';
+                    uploadMsg.className = 'upload-msg ok';
+                    fileInput.value = '';
+                    setFile(null);
+                } else {
+                    uploadMsg.textContent = 'Error: ' + res.status + ' ' + res.statusText;
+                    uploadMsg.className = 'upload-msg err';
+                }
+            } catch (err) {
+                uploadMsg.textContent = 'Connection error.';
+                uploadMsg.className = 'upload-msg err';
+            }
+            uploadBtn.disabled = false;
+        });
     </script>
 </body>
 </html>

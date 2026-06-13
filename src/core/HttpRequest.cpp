@@ -48,7 +48,7 @@ void	HttpRequest::parseMultipart(const std::string& boundary)
 				file.filename = part_headers.substr(fn_pos, fn_end - fn_pos);
 		}
 		file.content = body.substr(content_start, next_boundary - content_start);
-		if (!file.content.empty() && !file.filename.empty() && isValidPath(file.filename))
+		if (!file.filename.empty() && file.filename.find("..") == std::string::npos)
 		{
 			uploads.push_back(file);
 			std::cout << "[DEBUG] upload: " << file.filename
@@ -107,7 +107,7 @@ void	HttpRequest::parse(const std::string& header)
 		error_code = 400;
 		return ;
 	}
-	if (uri.empty() || uri[0] != '/' || !isValidPath(uri))
+	if (uri.empty() || uri[0] != '/')
 	{
 		error_code = 400;
 		return ;
@@ -139,4 +139,24 @@ void	HttpRequest::parse(const std::string& header)
 	}
 }
 
-bool	HttpRequest::isValidPath(const std::string& uri) const	{ return (uri.find("..") == std::string::npos); }
+bool	HttpRequest::isValidPath() const	
+{ 
+	std::stringstream	ss(path);
+	std::vector<std::string>	segments;
+	std::vector<std::string>	resolved;
+	std::string	token;
+	while (std::getline(ss, token, '/'))
+		segments.push_back(token);
+	for (size_t i = 0; i < segments.size(); i++)
+	{
+		if (segments[i] != "..")
+			resolved.push_back(segments[i]);
+		else
+		{
+			resolved.pop_back();
+			if (resolved.empty())
+				break;
+		}	
+	}
+	return (!resolved.empty()); 
+}

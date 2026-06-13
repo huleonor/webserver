@@ -93,13 +93,6 @@ static std::string	getMimeType(const std::string& path)
 
 void	Client::handleGet(const Location& loc)
 {
-	// 1. bloquear path traversal
-	if (_request.path.find("..") != std::string::npos)
-	{
-		buildErrorResponse(403, "Forbidden");
-		return ;
-	}
-
 	// 2. redirect
 	if (!loc.getReturn().empty())
 	{
@@ -110,22 +103,19 @@ void	Client::handleGet(const Location& loc)
 		return ;
 	}
 
-	std::string	root   = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
-	std::string	target = root + _request.path;
-
 	struct stat	st;
-	if (stat(target.c_str(), &st) == 0 && S_ISDIR(st.st_mode) && target[target.size() - 1] != '/')
-		target += '/';
+	if (stat(_request.path.c_str(), &st) == 0 && S_ISDIR(st.st_mode) && _request.path[_request.path.size() - 1] != '/')
+		_request.path += '/';
 
-	if (!target.empty() && target[target.size() - 1] == '/')
+	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
 	{
 		std::string	index = loc.getIndex().empty() ? _server->getIndex() : loc.getIndex();
-		std::ifstream	test((target + index).c_str());
+		std::ifstream	test((_request.path + index).c_str());
 		if (test.is_open())
-			target += index;
+			_request.path += index;
 		else if (loc.getAutoindex())
 		{
-			buildAutoindex(target);
+			buildAutoindex(_request.path);
 			return ;
 		}
 		else
@@ -135,7 +125,7 @@ void	Client::handleGet(const Location& loc)
 		}
 	}
 
-	std::ifstream	file(target.c_str(), std::ios::binary);
+	std::ifstream	file(_request.path.c_str(), std::ios::binary);
 	if (!file.is_open())
 	{
 		buildErrorResponse(404, "Not Found");
@@ -147,7 +137,7 @@ void	Client::handleGet(const Location& loc)
 	_response.setCodeStatus(200);
 	_response.setStatusPhrase("OK");
 	_response.setBody(ss.str());
-	_response.buildSuccess(getMimeType(target));
+	_response.buildSuccess(getMimeType(_request.path));
 	_status = WRITING;
 }
 
@@ -321,13 +311,18 @@ void	Client::handlePost(const Location& loc)
 {
 	if (_request.uploads.size() == 0)
 		buildUploadFromPath(loc);
+	if (loc.getUploadPath().empty())
+		buildErrorResponse(403, "Forbidden");
+	else
+		_request.path = loc.getUploadPath();
 	if (_status == ERROR)
 		return ;
 	std::string	dirPath;
-	buildDirPath(loc, dirPath);
-	if (!isValidDirPath(dirPath))
+	_request.path = dirPath;
+	_request.isValidPath();
+	if (!isValidDirPath())
 		return ;
-	postContent(dirPath);
+	postContent();
 }
 
 void	Client::buildUploadFromPath(const Location& loc)
@@ -337,33 +332,19 @@ void	Client::buildUploadFromPath(const Location& loc)
 
 	upload.filename = _request.path.substr(pos + 1);
 	upload.content = _request.body;
-	if (upload.filename == loc.getPath().substr(1) || 
-		upload.filename.empty() || 
-		upload.content.empty())
+	if (upload.filename == loc.getPath().substr(1) ||
+		upload.filename.empty())
 			return buildErrorResponse(400, "Bad Request");
 	_request.path.erase(pos);
 	_request.uploads.push_back(upload);
 }
 
-void	Client::buildDirPath(const Location& loc, std::string& dirPath)
-{
-	if (_request.path == loc.getPath() && !loc.getUploadPath().empty())
-		dirPath = loc.getUploadPath();
-	else
-	{
-		std::string	root = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
-		normalizeSlash(root);
-		normalizeSlash(_request.path);
-		dirPath = root + '/' + _request.path;
-	}
-}
-
-bool	Client::isValidDirPath(const std::string& dirPath)
+bool	Client::isValidDirPath()
 {
 	struct	stat st;
 	int		code = 0;
 	
-	if (stat(dirPath.c_str(), &st) == -1)
+	if (stat(_request.path.c_str(), &st) == -1)
 	{
 		if (errno == EACCES)
 			code = 403;
@@ -388,11 +369,11 @@ bool	Client::isValidDirPath(const std::string& dirPath)
 	return (code == 0);
 }
 
-void	Client::postContent(const std::string& dirPath)
+void	Client::postContent()
 {
 	for (size_t i = 0; i < _request.uploads.size(); i++)
 	{
-		std::string		fullPath = dirPath + '/' +  _request.uploads[i].filename;
+		std::string		fullPath = _request.path + '/' +  _request.uploads[i].filename;
 		std::ofstream	file(fullPath.c_str());
 
 		if (!file.is_open())
@@ -400,3 +381,16 @@ void	Client::postContent(const std::string& dirPath)
 		file.write(_request.uploads[i].content.c_str(), _request.uploads[i].content.size());
 	}
 }
+
+
+
+void	Client::validateAndReplacePath(const Location& loc)
+{
+	std::string	root = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
+	normalizeSlash(root);
+	_request.path = root + _request.path;
+	normalizeSlash(_request.path);
+	if (!_request.isValidPath())
+		buildErrorResponse(403, "Forbidden");
+}
+

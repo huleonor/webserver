@@ -45,11 +45,11 @@ private:
 	void				receiveBody(const std::string& request);
 	bool				hasCompleteBody();
 	void				parseMultipartIfNeeded();
+	// Response
 	void				buildAutoindex(const std::string& dirPath);
 	void				buildUploadFromPath(const Location& loc);
-	void				buildDirPath(const Location& loc, std::string& dirPath);
-	bool				isValidDirPath(const std::string& dirPath);
-	void				postContent(const std::string& dirPath);
+	bool				isValidDirPath();
+	void				postContent();
 
 public:
 // Constants
@@ -74,10 +74,13 @@ public:
 // Response
 	void				buildErrorResponse(int code, const std::string& phrase);
 	void				handleGet(const Location& loc);
+	void				handlePost(const Location& loc);
 	void				sendResponse();
+	void				validateAndReplacePath(const Location& loc);
 // Request Handling
 	ssize_t				receiveData();
-	void				handlePost(const Location& loc);
+
+
 };
 
 #endif

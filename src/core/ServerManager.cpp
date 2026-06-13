@@ -203,6 +203,10 @@ void	ServerManager::processClientRequest(Client& client)
 		return client.buildErrorResponse(405, "Method Not Allowed");
 	// if (!loc.getCgiExt().empty() && !loc.getCgiPath().empty())
 	// return	handleCGI();
+
+	client.validateAndReplacePath(*location);
+	if (client.getStatus() == Client::ERROR)
+		return ;
 	if (client.getRequest().method == "GET")
 		client.handleGet(*location);
 	else if (client.getRequest().method == "POST")
