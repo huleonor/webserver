@@ -22,6 +22,13 @@ public:
 		ERROR,
 		CLOSE
 	};
+	struct CgiInfo
+	{
+		pid_t	cgi_pid; 
+		int		client_cgi_fd; // read end of CGI output pipe
+		time_t	start_cgi;
+	};
+	
 
 private:
 // Attributes
@@ -37,6 +44,7 @@ private:
 	Response		_response;
 	ssize_t			_bytes_sent;
 	time_t			_last_time_activity;
+	CgiInfo*		_cgi_info;
 // Non-copyable (owns a unique socket fd)
 	Client(const Client& other);
 	Client&	operator=(const Client& other);
@@ -48,8 +56,8 @@ private:
 	// Response
 	void				buildAutoindex(const std::string& dirPath);
 	void				buildUploadFromPath(const Location& loc);
-	bool				isValidDirPath();
 	void				postContent();
+	void				executeCGI();
 
 public:
 // Constants
@@ -59,6 +67,7 @@ public:
 	~Client();
 // Getters
 	int					getClientSocket() const;
+	CgiInfo*			getClientCgi() const;
 	in_port_t			getClientPort() const;
 	in_addr_t			getClientAddr() const;
 	Status				getStatus() const;
@@ -68,12 +77,14 @@ public:
 	const ServerConfig*	getClientServer() const;
 	ssize_t				getBytesSent() const;
 	time_t				getLastTimeActivity() const;
+	const std::string&	getLogMsg() const;
 // Setters
 	void				setStatus(Status status);
 	void				setBytesSent(ssize_t n);
 	void				setLastTimeActivity(time_t time);
+	void				setLogMsg(const std::string& msg);
 // Response
-	void				buildErrorResponse(int code, const std::string& phrase);
+	void				buildErrorResponse(int code);
 	void				handleGet(const Location& loc);
 	void				handlePost(const Location& loc);
 	void				handleCGI(const Location& loc);
@@ -82,8 +93,6 @@ public:
 	void				validateAndReplacePath(const Location& loc);
 // Request Handling
 	ssize_t				receiveData();
-
-
 };
 
 #endif

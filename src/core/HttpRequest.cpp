@@ -3,6 +3,7 @@
 #include <sstream>
 #include <cctype>
 #include <iostream>
+#include <cerrno>
 
 HttpRequest::HttpRequest() : error_code(0) {}
 HttpRequest::~HttpRequest() {}
@@ -135,6 +136,20 @@ void	HttpRequest::parse(const std::string& header)
 		toLower(key);
 		headers[key] = value;
 	}
+}
+// Check path accessibility and populate target_info
+bool	HttpRequest::isValidPath()
+{
+	if (stat(path.c_str(), &target_info) == -1)
+	{
+		if (errno == EACCES)
+			error_code = 403;
+		else if (errno == ENOENT)
+			error_code = 404;
+		else
+			error_code = 500;
+	}
+	return (error_code);
 }
 
 // resolves ".." segments and returns false if the path tries to escape the root
