@@ -1,4 +1,5 @@
 #include "../../include/HttpRequest.hpp"
+#include "../../include/utils.hpp"
 #include <sstream>
 #include <cctype>
 #include <iostream>
@@ -136,7 +137,8 @@ void	HttpRequest::parse(const std::string& header)
 	}
 }
 
-bool	HttpRequest::isWithinRoot() const	
+// resolves ".." segments and returns false if the path tries to escape the root
+bool	HttpRequest::resolvePathWithinRoot()
 { 
 	std::stringstream	ss(path);
 	std::vector<std::string>	segments;
@@ -155,5 +157,9 @@ bool	HttpRequest::isWithinRoot() const
 				break;
 		}	
 	}
+	path.clear();
+	for (size_t i = 0; i < resolved.size(); i++)
+		path+= (resolved[i] + '/');
+	normalizeSlash(path);
 	return (!resolved.empty()); 
 }

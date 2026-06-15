@@ -26,7 +26,7 @@ struct HttpRequest
 	HttpRequest();
 	~HttpRequest();
 	void	parse(const std::string& header);
-	bool	isWithinRoot() const;
+	bool	resolvePathWithinRoot();
 	void	parseMultipart(const std::string& boundary);
 };
 

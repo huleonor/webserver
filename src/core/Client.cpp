@@ -450,6 +450,6 @@ void	Client::validateAndReplacePath(const Location& loc)
 	normalizeSlash(root);
 	_request.path = root + _request.path;
 	normalizeSlash(_request.path);
-	if (!_request.isWithinRoot())
+	if (!_request.resolvePathWithinRoot())
 		buildErrorResponse(403, "Forbidden");
 }
