@@ -118,6 +118,9 @@ void	ServerManager::monitorClients()
 	for (size_t i = _servers.size(); i < _pfds.size(); i++)
 	{
 		client_it	it = _clients.find(_pfds[i].fd);
+		Client* c = it->second;
+		if (c->getStatus() != Client::READING_HEADER && c->getStatus() != Client::READING_BODY)
+            continue;
 		if (time(NULL) - it->second->getLastTimeActivity() >= 60)
 		{
 			it->second->setLogMsg("timeout");
