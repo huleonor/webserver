@@ -37,6 +37,7 @@ void	Response::setCodeStatus(int code)	{ _status_code = code; }
 void	Response::setStatusPhrase(const std::string& phrase)	{ _status_phrase = phrase; }
 void	Response::setBody(const std::string& body)	{ _body = body; }
 void	Response::setFullResponse()	{ _full_response = _first_line + _headers + _body; }
+void	Response::setLogMsg(const std::string& msg) { _log_close_msg = msg; }
 
 void	Response::setFirstLine()
 {
@@ -83,6 +84,7 @@ const std::string&	Response::getFirstLine() const		{ return (_first_line); }
 const std::string&	Response::getHeaders() const		{ return (_headers); }
 const std::string&	Response::getBody() const			{ return (_body); }
 const std::string&	Response::getFullResponse() const	{ return (_full_response); }
+const std::string&	Response::gettLogMsg() const 		{ return (_log_close_msg); }
 
 void	Response::buildSuccess(const std::string& mimeType)
 {

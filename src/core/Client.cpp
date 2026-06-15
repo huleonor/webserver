@@ -25,7 +25,8 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
       _chunked(false),
       _status(READING_HEADER),
       _bytes_sent(0),
-	  _last_time_activity(time(NULL))
+	  _last_time_activity(time(NULL)),
+	  _cgi_info(NULL)
 {
 }
 
@@ -35,9 +36,11 @@ Client::~Client() { close(_client_socket); }
 void	Client::setStatus(Status status)	{ _status = status; }
 void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
 void	Client::setLastTimeActivity(time_t time)	{ _last_time_activity = time; }
+void	Client::setLogMsg(const std::string& msg)	{ _response.setLogMsg(msg); }
 
 /* --------------------------------- Getters -------------------------------- */
 int					Client::getClientSocket() const	{ return (_client_socket); }
+Client::CgiInfo*			Client::getClientCgi() const	{ return (_cgi_info); }
 in_port_t			Client::getClientPort() const	{ return (_client_port); }
 in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
 Client::Status		Client::getStatus() const		{ return (_status); }
@@ -47,6 +50,7 @@ const std::string&	Client::getFullResponse() const		{ return (_response.getFullR
 const ServerConfig*	Client::getClientServer() const { return (_server); }
 ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
 time_t				Client::getLastTimeActivity() const { return (_last_time_activity); }
+const std::string&	Client::getLogMsg() const { return (_response.gettLogMsg()); }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::parseMultipartIfNeeded()
@@ -63,13 +67,13 @@ void	Client::parseMultipartIfNeeded()
 	std::string boundary = content_type.substr(boundary_pos + 9);
 	_request.parseMultipart(boundary);
 	if (_request.uploads.size() == 0)
-		buildErrorResponse(400, "Bad Request");
+		buildErrorResponse(400);
 }
 
-void	Client::buildErrorResponse(int code, const std::string& phrase)
+void	Client::buildErrorResponse(int code)
 {
 	_response.setCodeStatus(code);
-	_response.setStatusPhrase(phrase);
+	_response.setStatusPhrase(getErrorPhrase(code));
 	_response.buildError(*_server);
 	_status = ERROR;
 }
@@ -105,8 +109,7 @@ void	Client::handleGet(const Location& loc)
 		return ;
 	}
 
-	struct stat	st;
-	if (stat(_request.path.c_str(), &st) == 0 && S_ISDIR(st.st_mode) && _request.path[_request.path.size() - 1] != '/')
+	if (_request.isValidPath() == 0 && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
 		_request.path += '/';
 
 	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
@@ -122,7 +125,7 @@ void	Client::handleGet(const Location& loc)
 		}
 		else
 		{
-			buildErrorResponse(403, "Forbidden");
+			buildErrorResponse(403);
 			return ;
 		}
 	}
@@ -130,7 +133,7 @@ void	Client::handleGet(const Location& loc)
 	std::ifstream	file(_request.path.c_str(), std::ios::binary);
 	if (!file.is_open())
 	{
-		buildErrorResponse(404, "Not Found");
+		buildErrorResponse(404);
 		return ;
 	}
 	std::ostringstream	ss;
@@ -149,17 +152,17 @@ void	Client::handleDelete()
 	struct stat	st;
 	if (stat(_request.path.c_str(), &st) == -1)
 	{
-		buildErrorResponse(404, "Not Found");
+		buildErrorResponse(404);
 		return ;
 	}
 	if (S_ISDIR(st.st_mode))
 	{
-		buildErrorResponse(403, "Forbidden");
+		buildErrorResponse(403);
 		return ;
 	}
 	if (remove(_request.path.c_str()) != 0)
 	{
-		buildErrorResponse(403, "Forbidden");
+		buildErrorResponse(403);
 		return ;
 	}
 	struct in_addr tmp;
@@ -177,7 +180,7 @@ void	Client::buildAutoindex(const std::string& dirPath)
 	DIR*			dir = opendir(dirPath.c_str());
 	if (!dir)
 	{
-		buildErrorResponse(403, "Forbidden");
+		buildErrorResponse(403);
 		return ;
 	}
 	std::ostringstream	html;
@@ -242,7 +245,7 @@ void	Client::receiveHeader(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
 	{
-		buildErrorResponse(400, "Request Header Or Cookie Too Large");
+		buildErrorResponse(400);
 		return ;
 	}
 	_request_buffer.append(request);
@@ -259,11 +262,11 @@ void	Client::receiveHeader(const std::string& request)
 		if (_request.error_code != 0)
 		{
 			if (_request.error_code == 501)
-				buildErrorResponse(501, "Not Implemented");
+				buildErrorResponse(501);
 			else if (_request.error_code == 414)
-				buildErrorResponse(414, "URI Too Long");
+				buildErrorResponse(414);
 			else
-				buildErrorResponse(400, "Bad Request");
+				buildErrorResponse(400);
 			return ;
 		}
 		if (_request.headers.count("transfer-encoding"))
@@ -277,12 +280,12 @@ void	Client::receiveHeader(const std::string& request)
 			ss >> _content_length;
 			if (ss.fail())
 			{
-				buildErrorResponse(400, "Bad Request");
+				buildErrorResponse(400);
 				return ;
 			}
 			if (_content_length > _server->getClientMaxBodySize())
 			{
-				buildErrorResponse(413, "Content Too Large");
+				buildErrorResponse(413);
 				return ;
 			}
 			_status = (_content_length > 0) ? READING_BODY : PROCESSING;
@@ -296,7 +299,7 @@ void	Client::receiveBody(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > _server->getClientMaxBodySize())
 	{
-		buildErrorResponse(413, "Content Too Large");
+		buildErrorResponse(413);
 		return ;
 	}
 	_request_buffer.append(request);
@@ -342,21 +345,48 @@ bool	Client::hasCompleteBody()
 	return (false);
 }
 
+void	Client::executeCGI()
+{
+	int	pipe_body[2];
+	int	pipe_output[2];
+	_cgi_info = new CgiInfo;
+
+	if (pipe(pipe_body) < 0 || pipe(pipe_output) < 0)
+		throw std::runtime_error("pipe failed");
+	pid_t	pid = fork();
+	if (pid < 0)
+		throw std::runtime_error("fork failed");
+	_cgi_info->start_cgi = time(NULL);
+	_cgi_info->cgi_pid = pid;
+	_cgi_info->client_cgi_fd = pipe_output[0];
+	if (pid == 0)
+	{
+		close (pipe_body[1]);
+		
+
+	}
+	close(pipe_output[1]);
+	// waitpid();
+}
+
 void	Client::handleCGI(const Location& loc)
 {
 	size_t	dot = _request.path.rfind('.');
 	if (dot == std::string::npos)
-	{
-		buildErrorResponse(403, "Forbidden");
-		return ;
-	}
+		return buildErrorResponse(403);
 	std::string	ext = _request.path.substr(dot);
 	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
 	if (std::find(cgi_exts.begin(), cgi_exts.end(), ext) == cgi_exts.end())
+		return buildErrorResponse(403);
+	_request.path = "/home/project/webserver/cgi-bin/file.py";
+	if (_request.isValidPath() == 0)
 	{
-		buildErrorResponse(403, "Forbidden");
-		return ;
+		if (!(_request.target_info.st_mode & S_IXUSR))
+				_request.error_code = 403;
 	}
+	if (_request.error_code != 0)
+		return buildErrorResponse(_request.error_code);
+	executeCGI();
 }
 
 void	Client::handlePost(const Location& loc)
@@ -366,11 +396,19 @@ void	Client::handlePost(const Location& loc)
 	if (_status == ERROR)
 		return ;
 	if (loc.getUploadPath().empty())
-		return buildErrorResponse(403, "Forbidden");
+		return buildErrorResponse(403);
 	else
 		_request.path = loc.getUploadPath();
-	if (!isValidDirPath())
-		return ;
+	if (_request.isValidPath() == 0)
+	{
+		if (!S_ISDIR(_request.target_info.st_mode)) 
+			_request.error_code = 404;
+		if (!(_request.target_info.st_mode & S_IWUSR) 
+			|| !(_request.target_info.st_mode & S_IXUSR))
+				_request.error_code = 403;
+	}
+	if (_request.error_code != 0)
+		return buildErrorResponse(_request.error_code);
 	postContent();
 	_response.setCodeStatus(201);
 	_response.setStatusPhrase("Created");
@@ -389,40 +427,10 @@ void	Client::buildUploadFromPath(const Location& loc)
 	upload.content = _request.body;
 	if (upload.filename == loc.getPath().substr(1) ||
 		upload.filename.empty() || upload.content.empty())
-			return buildErrorResponse(400, "Bad Request");
+			return buildErrorResponse(400);
 	if (pos != std::string::npos)
 		_request.path.erase(pos);
 	_request.uploads.push_back(upload);
-}
-
-bool	Client::isValidDirPath()
-{
-	struct	stat st;
-	int		code = 0;
-	
-	if (stat(_request.path.c_str(), &st) == -1)
-	{
-		if (errno == EACCES)
-			code = 403;
-		else if (errno == ENOENT)
-			code = 404;
-		else
-			code = 500;
-	}
-	else
-	{
-		if (!S_ISDIR(st.st_mode))
-			code = 404;
-		if (!(st.st_mode & S_IWUSR) || !(st.st_mode & S_IXUSR))
-			code = 403;
-	}
-	if (code == 403)
-		buildErrorResponse(403, "Forbidden");
-	else if (code == 404)
-		buildErrorResponse(404, "Not Found");
-	else if (code == 500)
-		buildErrorResponse(500, "Internal Server Error");
-	return (code == 0);
 }
 
 void	Client::postContent()
@@ -451,5 +459,5 @@ void	Client::validateAndReplacePath(const Location& loc)
 	_request.path = root + _request.path;
 	normalizeSlash(_request.path);
 	if (!_request.resolvePathWithinRoot())
-		buildErrorResponse(403, "Forbidden");
+		buildErrorResponse(403);
 }

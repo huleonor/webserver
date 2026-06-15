@@ -15,7 +15,8 @@ private:
 	std::string	_first_line;
 	std::string	_headers;
 	std::string	_body;
-	std::string	_full_response; 
+	std::string	_full_response;
+	std::string _log_close_msg;
 // Generate default error page
 	void				generateDefaultErrorPage();
 // Setters
@@ -33,12 +34,14 @@ public:
 	void				setCodeStatus(int code);
 	void				setStatusPhrase(const std::string& phrase);
 	void				setBody(const std::string& body);
+	void				setLogMsg(const std::string& msg);
 // Getters
 	const std::string&	getFirstLine() const;
 	const std::string&	getBody() const;
 	const std::string&	getHeaders() const;
 	const std::string&	getFullResponse() const;
-// Build Response
+	const std::string&	gettLogMsg() const;
+// Build Response 
 	void				buildSuccess(const std::string& mimeType);
 	void				buildRedirect(const std::string& location);
 	void				buildError(const ServerConfig& server);

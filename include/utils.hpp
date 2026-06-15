@@ -2,7 +2,9 @@
 # define UTILS_HPP
 
 #include <string>
+#include <map>
 
-void	normalizeSlash(std::string& str);
+std::string	getErrorPhrase(int code);
+void		normalizeSlash(std::string& str);
 
 #endif

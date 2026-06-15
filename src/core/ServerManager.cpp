@@ -4,7 +4,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <iostream>
-#include <fcntl.h>
+#include <fcntl.h> 
+#include <signal.h>
 #include <poll.h>
 #include <cstring>
 #include <cerrno>
@@ -106,9 +107,9 @@ void	ServerManager::start()
 				continue;
 			throw std::runtime_error("poll failed "  + std::string(strerror(errno)));
 		}
-		monitorClients();
 		if (num_events > 0)
 			handleEvent();
+		monitorClients();
 	}
 }
 
@@ -117,8 +118,26 @@ void	ServerManager::monitorClients()
 	for (size_t i = _servers.size(); i < _pfds.size(); i++)
 	{
 		client_it	it = _clients.find(_pfds[i].fd);
-		if (time(NULL) - it->second->getLastTimeActivity() >= 60)
-			closeConnection(i, "timeout");
+		if (it != _clients.end())
+		{
+			if (time(NULL) - it->second->getLastTimeActivity() >= 60)
+			{
+				it->second->setLogMsg("timeout");
+				it->second->buildErrorResponse(408);
+				_pfds[i].events = POLLOUT;
+			}
+			Client::CgiInfo*	cgi_info = it->second->getClientCgi();
+			if (cgi_info != NULL)
+			{
+				if (time(NULL) - cgi_info->start_cgi >= 5)
+				{
+					it->second->setLogMsg("cgi timeout");
+					kill(cgi_info->cgi_pid, SIGKILL);
+					it->second->buildErrorResponse(504);
+					_pfds[i].events = POLLOUT;
+				}
+			}
+		}
 	}
 }
 
@@ -131,7 +150,12 @@ void	ServerManager::handleEvent()
 			if (isServerSocket(i))
 				acceptNewClient(i);
 			else
-				handleClientRequest(i);
+			{
+				if (_clients.find(_pfds[i].fd) != _clients.end())
+					handleClientRequest(i);
+				// else
+				// handleCgiExecution();
+			}
 		}
 		else if (_pfds[i].revents & POLLOUT)
 			handleClientResponse(i);
@@ -168,10 +192,12 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 	try
 	{
 		ssize_t	n = it->second->receiveData();
-		if (n == -1)
-			return closeConnection(pfds_pos, "recv failed: " + std::string(strerror(errno)));
-		else if (n == 0)
-			return closeConnection(pfds_pos, "");
+		if (n < 1)
+		{
+			std::string	msg = (n == -1) ?  "recv failed: " + std::string(strerror(errno)) : "";
+			it->second->setLogMsg(msg);
+			return closeConnection(pfds_pos);
+		}
 		if (it->second->getStatus() == Client::PROCESSING)
 			processClientRequest(*it->second);
 		if (it->second->getStatus() == Client::WRITING || it->second->getStatus() == Client::ERROR)
@@ -180,7 +206,7 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 	catch(const std::exception& e)
 	{
 		std::cerr << "[ERROR] " << e.what() << std::endl;
-		it->second->buildErrorResponse(500, "Internal Server Error");
+		it->second->buildErrorResponse(500);
 		_pfds[pfds_pos].events = POLLOUT;
 	}
 }
@@ -190,35 +216,42 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 	client_it	it = _clients.find(_pfds[pfds_pos].fd);
 	const HttpRequest&	request = it->second->getRequest();
 	const Response&	response = it->second->getResponse();
-
 	std::string	addr = toAddrStr(it->second->getClientAddr());
 	int			port = ntohs(it->second->getClientPort());
 
 	it->second->sendResponse();
-	std::string	msg = "";
 	if (it->second->getStatus() == Client::ERROR)
 	{
-		msg = "send failed: " + std::string(strerror(errno));
+		it->second->setLogMsg("send failed: " + std::string(strerror(errno)));
 		it->second->setStatus(Client::CLOSE);
 	}
 	std::cout << "[RESPONSE]: " << addr << ":" << port << " | Request:"
 			<< request.line_request << " -> " << response.getFirstLine();
 	if (it->second->getStatus() == Client::CLOSE)
-		closeConnection(pfds_pos, msg);
+		closeConnection(pfds_pos);
 }
 
 void	ServerManager::processClientRequest(Client& client)
 {
 	const Location*	location = client.getClientServer()->findLocation(client.getRequest().path);
 	if (location == NULL)
-		return client.buildErrorResponse(404, "Not Found");
+		return client.buildErrorResponse(404);
 	if (location->isValidMethod(client.getRequest().method) == false)
-		return client.buildErrorResponse(405, "Method Not Allowed");
+		return client.buildErrorResponse(405);
 	client.validateAndReplacePath(*location);
 	if (client.getStatus() == Client::ERROR)
 		return ;
 	if (!location->getCgiExt().empty() && !location->getCgiPath().empty())
-		return client.handleCGI(*location);
+	{
+		client.handleCGI(*location);
+		if (client.getClientCgi() != NULL)
+		{
+			struct pollfd pfd = {};
+			pfd.fd = client.getClientCgi()->client_cgi_fd;
+			pfd.events = POLLIN;
+			_pfds.push_back(pfd);
+		}
+	}
 	if (client.getRequest().method == "GET")
 		client.handleGet(*location);
 	else if (client.getRequest().method == "POST")
@@ -227,24 +260,18 @@ void	ServerManager::processClientRequest(Client& client)
 		client.handleDelete();
 }
 
-void	ServerManager::closeConnection(size_t& pfds_pos, const std::string& msg)
+void	ServerManager::closeConnection(size_t& pfds_pos)
 {
 	client_it	it = _clients.find(_pfds[pfds_pos].fd);
 	std::string	addr = toAddrStr(it->second->getClientAddr());
 	int			port = ntohs(it->second->getClientPort());
+	const std::string	msg = it->second->getLogMsg().empty() ? "closed by client" : it->second->getLogMsg();
 	delete it->second;
 	_clients.erase(_pfds[pfds_pos].fd);
 	_pfds.erase(_pfds.begin() + pfds_pos);
 	pfds_pos--;
-	std::string	reason;
-	if (msg.empty())
-		reason = "closed by client";
-	else if (msg == "timeout")
-		 reason = "timeout";
-	else
-		reason = "error: " + msg;
 	std::cout << "\033[31m[INFO]: " <<  addr << ":" 
-			  << port  << " | disconnected (" << reason << ")\033[0m" 
+			  << port  << " | disconnected (" << msg << ")\033[0m" 
 			  << std::endl;
 }
 
