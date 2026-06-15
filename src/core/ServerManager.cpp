@@ -118,25 +118,11 @@ void	ServerManager::monitorClients()
 	for (size_t i = _servers.size(); i < _pfds.size(); i++)
 	{
 		client_it	it = _clients.find(_pfds[i].fd);
-		if (it != _clients.end())
+		if (time(NULL) - it->second->getLastTimeActivity() >= 60)
 		{
-			if (time(NULL) - it->second->getLastTimeActivity() >= 60)
-			{
-				it->second->setLogMsg("timeout");
-				it->second->buildErrorResponse(408);
-				_pfds[i].events = POLLOUT;
-			}
-			Client::CgiInfo*	cgi_info = it->second->getClientCgi();
-			if (cgi_info != NULL)
-			{
-				if (time(NULL) - cgi_info->start_cgi >= 5)
-				{
-					it->second->setLogMsg("cgi timeout");
-					kill(cgi_info->cgi_pid, SIGKILL);
-					it->second->buildErrorResponse(504);
-					_pfds[i].events = POLLOUT;
-				}
-			}
+			it->second->setLogMsg("timeout");
+			it->second->buildErrorResponse(408);
+			_pfds[i].events = POLLOUT;
 		}
 	}
 }
@@ -150,12 +136,7 @@ void	ServerManager::handleEvent()
 			if (isServerSocket(i))
 				acceptNewClient(i);
 			else
-			{
-				if (_clients.find(_pfds[i].fd) != _clients.end())
-					handleClientRequest(i);
-				// else
-				// handleCgiExecution();
-			}
+				handleClientRequest(i);
 		}
 		else if (_pfds[i].revents & POLLOUT)
 			handleClientResponse(i);
@@ -192,7 +173,7 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 	try
 	{
 		ssize_t	n = it->second->receiveData();
-		if (n < 1)
+		if (n <= 0)
 		{
 			std::string	msg = (n == -1) ?  "recv failed: " + std::string(strerror(errno)) : "";
 			it->second->setLogMsg(msg);
@@ -242,16 +223,7 @@ void	ServerManager::processClientRequest(Client& client)
 	if (client.getStatus() == Client::ERROR)
 		return ;
 	if (!location->getCgiExt().empty() && !location->getCgiPath().empty())
-	{
-		client.handleCGI(*location);
-		if (client.getClientCgi() != NULL)
-		{
-			struct pollfd pfd = {};
-			pfd.fd = client.getClientCgi()->client_cgi_fd;
-			pfd.events = POLLIN;
-			_pfds.push_back(pfd);
-		}
-	}
+		return client.handleCGI(*location);
 	if (client.getRequest().method == "GET")
 		client.handleGet(*location);
 	else if (client.getRequest().method == "POST")

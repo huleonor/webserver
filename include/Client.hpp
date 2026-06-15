@@ -22,14 +22,7 @@ public:
 		ERROR,
 		CLOSE
 	};
-	struct CgiInfo
-	{
-		pid_t	cgi_pid; 
-		int		client_cgi_fd; // read end of CGI output pipe
-		time_t	start_cgi;
-	};
 	
-
 private:
 // Attributes
 	int				_client_socket;
@@ -44,7 +37,6 @@ private:
 	Response		_response;
 	ssize_t			_bytes_sent;
 	time_t			_last_time_activity;
-	CgiInfo*		_cgi_info;
 // Non-copyable (owns a unique socket fd)
 	Client(const Client& other);
 	Client&	operator=(const Client& other);
@@ -57,7 +49,6 @@ private:
 	void				buildAutoindex(const std::string& dirPath);
 	void				buildUploadFromPath(const Location& loc);
 	void				postContent();
-	void				executeCGI();
 
 public:
 // Constants
@@ -67,7 +58,6 @@ public:
 	~Client();
 // Getters
 	int					getClientSocket() const;
-	CgiInfo*			getClientCgi() const;
 	in_port_t			getClientPort() const;
 	in_addr_t			getClientAddr() const;
 	Status				getStatus() const;

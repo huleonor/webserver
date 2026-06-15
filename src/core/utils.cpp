@@ -15,7 +15,7 @@ std::string	getErrorPhrase(int code)
 		phrases[413] = "Content Too Large";
 		phrases[500] = "Internal Server Error";
 		phrases[501] = "Not Implemented";
-		phrases[501] = "Gateway Timeout";
+		phrases[504] = "Gateway Timeout";
 		phrases[505] = "HTTP Version Not Supported";
 	}
 	std::map<int, std::string>::iterator it = phrases.find(code);

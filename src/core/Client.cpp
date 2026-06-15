@@ -10,7 +10,6 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
-#include <fstream>
 #include <algorithm>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
@@ -25,8 +24,7 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
       _chunked(false),
       _status(READING_HEADER),
       _bytes_sent(0),
-	  _last_time_activity(time(NULL)),
-	  _cgi_info(NULL)
+	  _last_time_activity(time(NULL))
 {
 }
 
@@ -40,7 +38,6 @@ void	Client::setLogMsg(const std::string& msg)	{ _response.setLogMsg(msg); }
 
 /* --------------------------------- Getters -------------------------------- */
 int					Client::getClientSocket() const	{ return (_client_socket); }
-Client::CgiInfo*			Client::getClientCgi() const	{ return (_cgi_info); }
 in_port_t			Client::getClientPort() const	{ return (_client_port); }
 in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
 Client::Status		Client::getStatus() const		{ return (_status); }
@@ -345,30 +342,6 @@ bool	Client::hasCompleteBody()
 	return (false);
 }
 
-void	Client::executeCGI()
-{
-	int	pipe_body[2];
-	int	pipe_output[2];
-	_cgi_info = new CgiInfo;
-
-	if (pipe(pipe_body) < 0 || pipe(pipe_output) < 0)
-		throw std::runtime_error("pipe failed");
-	pid_t	pid = fork();
-	if (pid < 0)
-		throw std::runtime_error("fork failed");
-	_cgi_info->start_cgi = time(NULL);
-	_cgi_info->cgi_pid = pid;
-	_cgi_info->client_cgi_fd = pipe_output[0];
-	if (pid == 0)
-	{
-		close (pipe_body[1]);
-		
-
-	}
-	close(pipe_output[1]);
-	// waitpid();
-}
-
 void	Client::handleCGI(const Location& loc)
 {
 	size_t	dot = _request.path.rfind('.');
@@ -378,7 +351,6 @@ void	Client::handleCGI(const Location& loc)
 	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
 	if (std::find(cgi_exts.begin(), cgi_exts.end(), ext) == cgi_exts.end())
 		return buildErrorResponse(403);
-	_request.path = "/home/project/webserver/cgi-bin/file.py";
 	if (_request.isValidPath() == 0)
 	{
 		if (!(_request.target_info.st_mode & S_IXUSR))
@@ -386,7 +358,6 @@ void	Client::handleCGI(const Location& loc)
 	}
 	if (_request.error_code != 0)
 		return buildErrorResponse(_request.error_code);
-	executeCGI();
 }
 
 void	Client::handlePost(const Location& loc)
@@ -458,6 +429,6 @@ void	Client::validateAndReplacePath(const Location& loc)
 	normalizeSlash(root);
 	_request.path = root + _request.path;
 	normalizeSlash(_request.path);
-	if (!_request.resolvePathWithinRoot())
+	if (!_request.resolvePathWithinRoot(root))
 		buildErrorResponse(403);
 }

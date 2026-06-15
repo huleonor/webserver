@@ -152,9 +152,9 @@ bool	HttpRequest::isValidPath()
 	return (error_code);
 }
 
-// resolves ".." segments and returns false if the path tries to escape the root
-bool	HttpRequest::resolvePathWithinRoot()
-{ 
+// resolves ".." segments and returns false if the path escapes root
+bool	HttpRequest::resolvePathWithinRoot(const std::string& root)
+{
 	std::stringstream	ss(path);
 	std::vector<std::string>	segments;
 	std::vector<std::string>	resolved;
@@ -167,14 +167,20 @@ bool	HttpRequest::resolvePathWithinRoot()
 			resolved.push_back(segments[i]);
 		else
 		{
-			resolved.pop_back();
+			if (!resolved.empty())
+				resolved.pop_back();
 			if (resolved.empty())
 				break;
-		}	
+		}
 	}
 	path.clear();
 	for (size_t i = 0; i < resolved.size(); i++)
-		path+= (resolved[i] + '/');
+		path += (resolved[i] + '/');
 	normalizeSlash(path);
-	return (!resolved.empty()); 
+	if (resolved.empty())
+		return (false);
+	return (path.size() >= root.size() &&
+		path.substr(0, root.size()) == root &&
+		(path.size() == root.size() || path[root.size()] == '/'));
 }
+
