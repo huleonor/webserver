@@ -11,6 +11,8 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <algorithm>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
@@ -28,7 +30,16 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
 {
 }
 
-Client::~Client() { close(_client_socket); }
+Client::~Client() 
+{ 
+	close(_client_socket); 
+	_client_socket = -1;
+	if (_request.cgi_info)
+	{
+		delete _request.cgi_info;
+		_request.cgi_info = NULL;
+	}
+}
 
 /* --------------------------------- Setters -------------------------------- */
 void	Client::setStatus(Status status)	{ _status = status; }
@@ -342,22 +353,45 @@ bool	Client::hasCompleteBody()
 	return (false);
 }
 
+void	Client::extractCgiInfo(const std::string loc)
+{
+	size_t root = _request.path.find(loc);
+	if (root != std::string::npos) 
+	{
+    	size_t dot = _request.path.find(".", root);
+    	if (dot == std::string::npos) 
+			return buildErrorResponse(403);
+    	size_t start_script = root + loc.size();
+    	if (start_script < _request.path.size() && _request.path[start_script] == '/')
+    	    start_script++;
+    	size_t next_slash = _request.path.find('/', dot);
+    	size_t ext_len = (next_slash == std::string::npos) ? _request.path.length() - dot : next_slash - dot;
+    	_request.cgi_info->ext = _request.path.substr(dot, ext_len);
+    	_request.cgi_info->filename = _request.path.substr(start_script, dot - start_script);
+    	if (next_slash != std::string::npos)
+		{
+    	    _request.path_info = _request.path.substr(next_slash);
+			_request.path = _request.path.substr(0, next_slash);
+		}
+	}
+}
+
 void	Client::handleCGI(const Location& loc)
 {
+	_request.cgi_info = new CgiInfo;
+	extractCgiInfo(loc.getPath());
+	if (_request.error_code != 0)
+		return ;
+	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
+	if (std::find(cgi_exts.begin(), cgi_exts.end(), _request.cgi_info->ext) == cgi_exts.end())
+		return buildErrorResponse(403);
 	if (_request.isValidPath())
 	{
 		if (!(_request.target_info.st_mode & S_IXUSR))
 			return buildErrorResponse(403);
-		size_t	dot = _request.path.rfind('.');
-		if (dot == std::string::npos)
-			return buildErrorResponse(403);
-		std::string	ext = _request.path.substr(dot);
-		const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
-		if (std::find(cgi_exts.begin(), cgi_exts.end(), ext) == cgi_exts.end())
-			return buildErrorResponse(403);
 	}
 	else
-		return buildErrorResponse(_request.error_code);
+		buildErrorResponse(_request.error_code);
 }
 
 void	Client::handlePost(const Location& loc)

@@ -12,17 +12,26 @@ struct UploadFile
 	std::string	content;
 };
 
+struct CgiInfo
+{
+	std::string	ext;
+	std::string	filename;
+};
+
+
 struct HttpRequest
 {
 	std::string							method;
 	std::string							path;
 	std::string							query_string;
+	std::string							path_info;
 	std::string							version;
 	std::map<std::string, std::string>	headers;
 	std::string							body;
 	std::vector<UploadFile>				uploads;
 	std::string							line_request;
 	int									error_code;
+	CgiInfo*							cgi_info;
 	struct	stat						target_info; // struct to save info from stat()
 
 	HttpRequest();

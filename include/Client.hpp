@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <string>
 #include <map>
+#include <vector>
 #include <ctime>
 #include "ServerConfig.hpp"
 #include "Response.hpp"
@@ -49,6 +50,7 @@ private:
 	void				buildAutoindex(const std::string& dirPath);
 	void				buildUploadFromPath(const Location& loc);
 	void				postContent();
+	void				extractCgiInfo(const std::string loc);
 
 public:
 // Constants
