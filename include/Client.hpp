@@ -9,6 +9,7 @@
 #include "ServerConfig.hpp"
 #include "Response.hpp"
 #include "HttpRequest.hpp"
+#include "CgiHandler.hpp"
 
 // Not copyable: each instance owns a unique TCP socket fd that must not be duplicated.
 class Client
@@ -38,6 +39,7 @@ private:
 	Response		_response;
 	ssize_t			_bytes_sent;
 	time_t			_last_time_activity;
+	CgiHandler*		_cgi;
 // Non-copyable (owns a unique socket fd)
 	Client(const Client& other);
 	Client&	operator=(const Client& other);
@@ -50,7 +52,6 @@ private:
 	void				buildAutoindex(const std::string& dirPath);
 	void				buildUploadFromPath(const Location& loc);
 	void				postContent();
-	void				extractCgiInfo(const std::string loc);
 
 public:
 // Constants
