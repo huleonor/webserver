@@ -84,7 +84,7 @@ const std::string&	Response::getFirstLine() const		{ return (_first_line); }
 const std::string&	Response::getHeaders() const		{ return (_headers); }
 const std::string&	Response::getBody() const			{ return (_body); }
 const std::string&	Response::getFullResponse() const	{ return (_full_response); }
-const std::string&	Response::gettLogMsg() const 		{ return (_log_close_msg); }
+const std::string&	Response::getLogMsg() const 		{ return (_log_close_msg); }
 
 void	Response::buildSuccess(const std::string& mimeType)
 {

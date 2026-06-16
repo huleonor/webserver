@@ -148,8 +148,9 @@ bool	HttpRequest::isValidPath()
 			error_code = 404;
 		else
 			error_code = 500;
+		return (false);
 	}
-	return (error_code);
+	return (true);
 }
 
 // resolves ".." segments and returns false if the path escapes root

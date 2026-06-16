@@ -47,7 +47,7 @@ const std::string&	Client::getFullResponse() const		{ return (_response.getFullR
 const ServerConfig*	Client::getClientServer() const { return (_server); }
 ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
 time_t				Client::getLastTimeActivity() const { return (_last_time_activity); }
-const std::string&	Client::getLogMsg() const { return (_response.gettLogMsg()); }
+const std::string&	Client::getLogMsg() const { return (_response.getLogMsg()); }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::parseMultipartIfNeeded()
@@ -106,7 +106,7 @@ void	Client::handleGet(const Location& loc)
 		return ;
 	}
 
-	if (_request.isValidPath() == 0 && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
+	if (_request.isValidPath() && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
 		_request.path += '/';
 
 	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
@@ -344,19 +344,19 @@ bool	Client::hasCompleteBody()
 
 void	Client::handleCGI(const Location& loc)
 {
-	size_t	dot = _request.path.rfind('.');
-	if (dot == std::string::npos)
-		return buildErrorResponse(403);
-	std::string	ext = _request.path.substr(dot);
-	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
-	if (std::find(cgi_exts.begin(), cgi_exts.end(), ext) == cgi_exts.end())
-		return buildErrorResponse(403);
-	if (_request.isValidPath() == 0)
+	if (_request.isValidPath())
 	{
 		if (!(_request.target_info.st_mode & S_IXUSR))
-				_request.error_code = 403;
+			return buildErrorResponse(403);
+		size_t	dot = _request.path.rfind('.');
+		if (dot == std::string::npos)
+			return buildErrorResponse(403);
+		std::string	ext = _request.path.substr(dot);
+		const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
+		if (std::find(cgi_exts.begin(), cgi_exts.end(), ext) == cgi_exts.end())
+			return buildErrorResponse(403);
 	}
-	if (_request.error_code != 0)
+	else
 		return buildErrorResponse(_request.error_code);
 }
 
@@ -370,7 +370,7 @@ void	Client::handlePost(const Location& loc)
 		return buildErrorResponse(403);
 	else
 		_request.path = loc.getUploadPath();
-	if (_request.isValidPath() == 0)
+	if (_request.isValidPath())
 	{
 		if (!S_ISDIR(_request.target_info.st_mode)) 
 			_request.error_code = 404;

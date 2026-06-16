@@ -12,6 +12,7 @@ std::string	getErrorPhrase(int code)
 		phrases[405] = "Method Not Allowed";
 		phrases[408] = "Request Timeout";
 		phrases[411] = "Length Required";
+		phrases[414] = "URI Too Long";
 		phrases[413] = "Content Too Large";
 		phrases[500] = "Internal Server Error";
 		phrases[501] = "Not Implemented";

@@ -40,7 +40,7 @@ public:
 	const std::string&	getBody() const;
 	const std::string&	getHeaders() const;
 	const std::string&	getFullResponse() const;
-	const std::string&	gettLogMsg() const;
+	const std::string&	getLogMsg() const;
 // Build Response 
 	void				buildSuccess(const std::string& mimeType);
 	void				buildRedirect(const std::string& location);

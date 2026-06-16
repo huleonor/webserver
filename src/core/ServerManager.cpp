@@ -154,18 +154,22 @@ void	ServerManager::acceptNewClient(size_t pfds_pos)
 		struct	sockaddr_in	addr = {};
 		socklen_t	addr_size = sizeof(addr);
 	
-		int	client_fd = accept(_servers[pfds_pos].getSocketFd(), (struct sockaddr *)&addr, &addr_size);
-		if (client_fd == -1)
-			break;
-		if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
-			handleInitOrAcceptError(client_fd, "fcntl failed: " + std::string(strerror(errno)));
-		_clients.insert(std::make_pair(client_fd, new Client(client_fd, addr, _servers[pfds_pos])));
-		struct pollfd pfd = {};
-		pfd.fd = client_fd;
-		pfd.events = POLLIN;
-		_pfds.push_back(pfd);
-		std::cout << "\033[32m[INFO]: " << toAddrStr(addr.sin_addr.s_addr) << ":"
-				  << ntohs(addr.sin_port) << " | connected\033[0m" << std::endl;
+		try
+		{
+			int	client_fd = accept(_servers[pfds_pos].getSocketFd(), (struct sockaddr *)&addr, &addr_size);
+			if (client_fd == -1)
+				break;
+			if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
+				handleInitOrAcceptError(client_fd, "fcntl failed: " + std::string(strerror(errno)));
+			_clients.insert(std::make_pair(client_fd, new Client(client_fd, addr, _servers[pfds_pos])));
+			struct pollfd pfd = {};
+			pfd.fd = client_fd;
+			pfd.events = POLLIN;
+			_pfds.push_back(pfd);
+			std::cout << "\033[32m[INFO]: " << toAddrStr(addr.sin_addr.s_addr) << ":"
+					  << ntohs(addr.sin_port) << " | connected\033[0m" << std::endl;
+		}
+		catch(const std::exception& e) { std::cerr << "\033[31m[ERROR]: " << e.what() << "\033[0m\n"; }
 	}
 }
 
