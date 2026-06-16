@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <dirent.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <algorithm>
@@ -353,7 +354,7 @@ bool	Client::hasCompleteBody()
 	return (false);
 }
 
-void	Client::extractCgiInfo(const std::string loc)
+void	Client::extractCgiInfo(const std::string& loc)
 {
 	size_t root = _request.path.find(loc);
 	if (root != std::string::npos) 
@@ -368,11 +369,74 @@ void	Client::extractCgiInfo(const std::string loc)
     	size_t ext_len = (next_slash == std::string::npos) ? _request.path.length() - dot : next_slash - dot;
     	_request.cgi_info->ext = _request.path.substr(dot, ext_len);
     	_request.cgi_info->filename = _request.path.substr(start_script, dot - start_script);
+		_request.cgi_info->script_name = loc + _request.cgi_info->filename;
     	if (next_slash != std::string::npos)
 		{
-    	    _request.path_info = _request.path.substr(next_slash);
+    	    _request.cgi_info->path_info = _request.path.substr(next_slash);
 			_request.path = _request.path.substr(0, next_slash);
 		}
+	}
+	else
+		buildErrorResponse(400);
+}
+
+void	Client::setEnv(char*** env_vars)
+{
+	std::vector<std::string>	env;
+
+	if (!_request.cgi_info->path_info.empty())
+		env.push_back("PATH_INFO=" + _request.cgi_info->path_info);
+	if (!_request.query_string.empty())
+		env.push_back("QUERY_STRING=" + _request.query_string);
+	env.push_back("REQUEST_METHOD=" + _request.method);
+	env.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
+	env.push_back("SCRIPT_NAME=" + _request.cgi_info->script_name);
+	env.push_back("SERVER_NAME=" + getClientServer()->getServerName());
+	env.push_back("SERVER_PORT=" + getClientServer()->getPort());
+	env.push_back("REDIRECT_STATUS=200");
+	if (_request.method == "POST")
+	{
+		if (_request.headers.count("content-type"))
+			env.push_back("CONTENT_TYPE=" + _request.headers["content-type"]);
+		if (_request.headers.count("content-length"))
+			env.push_back("CONTENT_LENGTH=" + _request.headers["content-length"]);
+	}
+	*env_vars = new char*[env.size() + 1];
+	for (size_t i = 0; i < env.size(); i++)
+	{
+		(*env_vars)[i] = new char[env[i].size() + 1];
+		std::copy(env[i].begin(), env[i].end(), (*env_vars)[i]);
+		(*env_vars)[i][env[i].size()] = '\0';
+	}
+	(*env_vars)[env.size()] = NULL;
+}
+
+void	Client::cgiSetup()
+{
+	int	pipe_body[2];
+	int	pipe_output[2];
+
+	if (pipe(pipe_body) < 0)
+		throw std::runtime_error("pipe body failed");
+	if (pipe(pipe_output) < 0)
+	{
+		close(pipe_body[0]);
+		close(pipe_body[1]);
+		throw std::runtime_error("pipe output failed");
+	}
+	if (fcntl(pipe_body[1], F_SETFL, O_NONBLOCK) == -1 || fcntl(pipe_output[0], F_SETFL, O_NONBLOCK) == -1)
+		throw std::runtime_error("fcntl in cgi failed");
+	char**	env_vars = NULL;
+	setEnv(&env_vars);
+	pid_t	pid = fork();
+	if (pid < 0)
+	{
+		close(pipe_body[0]);
+		close(pipe_body[1]);
+		close(pipe_output[0]);
+		close(pipe_output[1]);
+		throw std::runtime_error("fork failed");
 	}
 }
 
@@ -391,7 +455,8 @@ void	Client::handleCGI(const Location& loc)
 			return buildErrorResponse(403);
 	}
 	else
-		buildErrorResponse(_request.error_code);
+		return buildErrorResponse(_request.error_code);
+	cgiSetup();
 }
 
 void	Client::handlePost(const Location& loc)

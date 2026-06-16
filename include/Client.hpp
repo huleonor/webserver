@@ -50,7 +50,9 @@ private:
 	void				buildAutoindex(const std::string& dirPath);
 	void				buildUploadFromPath(const Location& loc);
 	void				postContent();
-	void				extractCgiInfo(const std::string loc);
+	void				extractCgiInfo(const std::string& loc);
+	void				cgiSetup();
+	void				setEnv(char*** envp);
 
 public:
 // Constants
