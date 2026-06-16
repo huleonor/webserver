@@ -32,7 +32,6 @@ struct HttpRequest
 	std::vector<UploadFile>				uploads;
 	std::string							line_request;
 	int									error_code;
-	CgiInfo*							cgi_info;
 	struct	stat						target_info; // struct to save info from stat()
 
 	HttpRequest();

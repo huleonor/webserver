@@ -27,7 +27,8 @@ Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
       _chunked(false),
       _status(READING_HEADER),
       _bytes_sent(0),
-	  _last_time_activity(time(NULL))
+	  _last_time_activity(time(NULL)),
+	  _cgi(NULL)
 {
 }
 
@@ -35,10 +36,10 @@ Client::~Client()
 { 
 	close(_client_socket); 
 	_client_socket = -1;
-	if (_request.cgi_info)
+	if (_cgi)
 	{
-		delete _request.cgi_info;
-		_request.cgi_info = NULL;
+		delete _cgi;
+		_cgi = NULL;
 	}
 }
 
@@ -354,100 +355,14 @@ bool	Client::hasCompleteBody()
 	return (false);
 }
 
-void	Client::extractCgiInfo(const std::string& loc)
-{
-	size_t root = _request.path.find(loc);
-	if (root != std::string::npos) 
-	{
-    	size_t dot = _request.path.find(".", root);
-    	if (dot == std::string::npos) 
-			return buildErrorResponse(403);
-    	size_t start_script = root + loc.size();
-    	if (start_script < _request.path.size() && _request.path[start_script] == '/')
-    	    start_script++;
-    	size_t next_slash = _request.path.find('/', dot);
-    	size_t ext_len = (next_slash == std::string::npos) ? _request.path.length() - dot : next_slash - dot;
-    	_request.cgi_info->ext = _request.path.substr(dot, ext_len);
-    	_request.cgi_info->filename = _request.path.substr(start_script, dot - start_script);
-		_request.cgi_info->script_name = loc + _request.cgi_info->filename;
-    	if (next_slash != std::string::npos)
-		{
-    	    _request.cgi_info->path_info = _request.path.substr(next_slash);
-			_request.path = _request.path.substr(0, next_slash);
-		}
-	}
-	else
-		buildErrorResponse(400);
-}
-
-void	Client::setEnv(char*** env_vars)
-{
-	std::vector<std::string>	env;
-
-	if (!_request.cgi_info->path_info.empty())
-		env.push_back("PATH_INFO=" + _request.cgi_info->path_info);
-	if (!_request.query_string.empty())
-		env.push_back("QUERY_STRING=" + _request.query_string);
-	env.push_back("REQUEST_METHOD=" + _request.method);
-	env.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
-	env.push_back("SCRIPT_NAME=" + _request.cgi_info->script_name);
-	env.push_back("SERVER_NAME=" + getClientServer()->getServerName());
-	env.push_back("SERVER_PORT=" + getClientServer()->getPort());
-	env.push_back("REDIRECT_STATUS=200");
-	if (_request.method == "POST")
-	{
-		if (_request.headers.count("content-type"))
-			env.push_back("CONTENT_TYPE=" + _request.headers["content-type"]);
-		if (_request.headers.count("content-length"))
-			env.push_back("CONTENT_LENGTH=" + _request.headers["content-length"]);
-	}
-	*env_vars = new char*[env.size() + 1];
-	for (size_t i = 0; i < env.size(); i++)
-	{
-		(*env_vars)[i] = new char[env[i].size() + 1];
-		std::copy(env[i].begin(), env[i].end(), (*env_vars)[i]);
-		(*env_vars)[i][env[i].size()] = '\0';
-	}
-	(*env_vars)[env.size()] = NULL;
-}
-
-void	Client::cgiSetup()
-{
-	int	pipe_body[2];
-	int	pipe_output[2];
-
-	if (pipe(pipe_body) < 0)
-		throw std::runtime_error("pipe body failed");
-	if (pipe(pipe_output) < 0)
-	{
-		close(pipe_body[0]);
-		close(pipe_body[1]);
-		throw std::runtime_error("pipe output failed");
-	}
-	if (fcntl(pipe_body[1], F_SETFL, O_NONBLOCK) == -1 || fcntl(pipe_output[0], F_SETFL, O_NONBLOCK) == -1)
-		throw std::runtime_error("fcntl in cgi failed");
-	char**	env_vars = NULL;
-	setEnv(&env_vars);
-	pid_t	pid = fork();
-	if (pid < 0)
-	{
-		close(pipe_body[0]);
-		close(pipe_body[1]);
-		close(pipe_output[0]);
-		close(pipe_output[1]);
-		throw std::runtime_error("fork failed");
-	}
-}
-
 void	Client::handleCGI(const Location& loc)
 {
-	_request.cgi_info = new CgiInfo;
-	extractCgiInfo(loc.getPath());
+	_cgi = new CgiHandler(_request, *this);
+	_cgi->extractCgiInfo(loc.getPath());
 	if (_request.error_code != 0)
 		return ;
 	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
-	if (std::find(cgi_exts.begin(), cgi_exts.end(), _request.cgi_info->ext) == cgi_exts.end())
+	if (std::find(cgi_exts.begin(), cgi_exts.end(), _cgi->getExt()) == cgi_exts.end())
 		return buildErrorResponse(403);
 	if (_request.isValidPath())
 	{
@@ -456,7 +371,7 @@ void	Client::handleCGI(const Location& loc)
 	}
 	else
 		return buildErrorResponse(_request.error_code);
-	cgiSetup();
+	_cgi->cgiSetup();
 }
 
 void	Client::handlePost(const Location& loc)

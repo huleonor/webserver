@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cerrno>
 
-HttpRequest::HttpRequest() : error_code(0), cgi_info(NULL) {}
+HttpRequest::HttpRequest() : error_code(0) {}
 HttpRequest::~HttpRequest() {}
 
 void	HttpRequest::parseMultipart(const std::string& boundary)
