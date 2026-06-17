@@ -63,6 +63,8 @@ void	ServerManager::setupServers()
 				throw std::runtime_error("socket failed: " +  std::string(strerror(errno)));
 			if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
 				handleInitOrAcceptError(fd, "fcntl failed: " + std::string(strerror(errno)));
+			if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
+				handleInitOrAcceptError(fd, "fcntl cloexec failed: " + std::string(strerror(errno)));
 			int	optval = 1;
 			if (setsockopt(fd,  SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
 				handleInitOrAcceptError(fd, "setsockopt failed: " +  std::string(strerror(errno)));
@@ -134,15 +136,39 @@ void	ServerManager::handleEvent()
 {
 	for (size_t i = 0; i < _pfds.size(); i++)
 	{
+		if (_pfds[i].revents & POLLERR)
+		{
+			client_it	it = _clients.find(_pfds[i].fd);
+			if (it != _clients.end())
+			{
+				it->second->setLogMsg("Connection error (POLLERR)");
+				closeConnection(i); continue;
+			}
+		}
 		if (_pfds[i].revents & POLLIN)
 		{
 			if (isServerSocket(i))
 				acceptNewClient(i);
-			else
+			else if (_clients.count(_pfds[i].fd))
 				handleClientRequest(i);
 		}
-		else if (_pfds[i].revents & POLLOUT)
+		if (_pfds[i].revents & POLLOUT)
 			handleClientResponse(i);
+		if (_pfds[i].revents & POLLHUP)
+		{
+			if (_clients.count(_pfds[i].fd))
+				handlePollHup(i); 
+		}
+	}
+}
+
+void	ServerManager::handlePollHup(size_t& pfds_pos)
+{
+	if (_clients.count(_pfds[pfds_pos].fd))
+	{
+		Client*	client = _clients[_pfds[pfds_pos].fd];
+		client->setLogMsg("Connection close (POLLHUP)");
+		closeConnection(pfds_pos);
 	}
 }
 
@@ -161,6 +187,8 @@ void	ServerManager::acceptNewClient(size_t pfds_pos)
 				break;
 			if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
 				handleInitOrAcceptError(client_fd, "fcntl failed: " + std::string(strerror(errno)));
+			if (fcntl(client_fd, F_SETFD, FD_CLOEXEC) == -1)
+				handleInitOrAcceptError(client_fd, "fcntl cloexec failed: " + std::string(strerror(errno)));
 			_clients.insert(std::make_pair(client_fd, new Client(client_fd, addr, _servers[pfds_pos])));
 			struct pollfd pfd = {};
 			pfd.fd = client_fd;
@@ -187,13 +215,14 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 			return closeConnection(pfds_pos);
 		}
 		if (it->second->getStatus() == Client::PROCESSING)
-			processClientRequest(*it->second);
+			processClientRequest(*it->second, _pfds);
 		if (it->second->getStatus() == Client::WRITING || it->second->getStatus() == Client::ERROR)
 			_pfds[pfds_pos].events = POLLOUT;
 	}
 	catch(const std::exception& e)
 	{
 		std::cerr << "[ERROR] " << e.what() << std::endl;
+		it->second->setLogMsg(e.what());
 		it->second->buildErrorResponse(500);
 		_pfds[pfds_pos].events = POLLOUT;
 	}
@@ -219,7 +248,7 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 		closeConnection(pfds_pos);
 }
 
-void	ServerManager::processClientRequest(Client& client)
+void	ServerManager::processClientRequest(Client& client, std::vector<struct pollfd>& pfds)
 {
 	const Location*	location = client.getClientServer()->findLocation(client.getRequest().path);
 	if (location == NULL)
@@ -230,7 +259,7 @@ void	ServerManager::processClientRequest(Client& client)
 	if (client.getStatus() == Client::ERROR)
 		return ;
 	if (!location->getCgiExt().empty() && !location->getCgiPath().empty())
-		return client.handleCGI(*location);
+		return client.handleCGI(*location, pfds);
 	if (client.getRequest().method == "GET")
 		client.handleGet(*location);
 	else if (client.getRequest().method == "POST")

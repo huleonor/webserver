@@ -15,6 +15,7 @@ public:
 private:
 // Attributes
 	std::map<int, Client*>		_clients;
+	std::map<int, Client*>		_cgi_pipes;
 	std::vector<struct pollfd>	_pfds;
 	std::vector<ServerConfig>	_servers;
 	static bool					_running;
@@ -25,11 +26,12 @@ private:
 	void	acceptNewClient(size_t pfds_pos);
 	void	handleClientRequest(size_t& pfds_pos);
 	void	handleClientResponse(size_t& pfds_pos);
-	void	processClientRequest(Client& client);
+	void	processClientRequest(Client& client, std::vector<struct pollfd>& pfds);
 	void	closeConnection(size_t& pfds_pos);
 // Error handling
 	void	handleInitOrAcceptError(int fd, const std::string& msg);
 // Runtime
+	void	handlePollHup(size_t& pfds_pos);
 	void	handleEvent();
 	bool	isServerSocket(size_t pos);
 	void	monitorClients();

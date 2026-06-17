@@ -3,13 +3,15 @@
 #include <stdexcept>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cstdlib>
+#include <iostream>
 
 /* -------------------------------- Lifecycle ------------------------------- */
-CgiHandler::CgiHandler(HttpRequest& request,  Client& client) 
+CgiHandler::CgiHandler(HttpRequest& request,  Client& client, std::vector<struct pollfd>& pfds)
 			: _pid(-1),
-			_env(NULL),
 			_request(request),
-			_client(client)
+			_client(client),
+			_pfds(pfds)
 {
 	_pipe_body[0] = -1;
 	_pipe_body[1] = -1;
@@ -17,19 +19,7 @@ CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
 	_pipe_output[1] = -1;
 }
 
-CgiHandler::~CgiHandler() 
-{
-	if (_env)
-	{
-		size_t	i = 0;
-		while (_env[i])
-		{
-			delete[] _env[i];
-			i++;
-		}
-		delete[] _env;
-	}
-}
+CgiHandler::~CgiHandler() {}
 
 /* --------------------------------- Getters -------------------------------- */
 const std::string&	CgiHandler::getExt() const			{ return (_ext); }
@@ -66,17 +56,71 @@ void	CgiHandler::extractCgiInfo(const std::string& loc)
 /* -------------------------------- CGI Setup ------------------------------- */
 void	CgiHandler::cgiSetup()
 {
+	setupPipe();
+	if (fcntl(_pipe_body[1], F_SETFL, O_NONBLOCK) == -1 || fcntl(_pipe_output[0], F_SETFL, O_NONBLOCK) == -1)
+		throw std::runtime_error("fcntl in cgi failed");
+	if (fcntl(_pipe_body[1], F_SETFD, FD_CLOEXEC) == -1 || fcntl(_pipe_output[0], F_SETFD, FD_CLOEXEC) == -1)
+		throw std::runtime_error("fcntl cloexec in cgi failed");
+	setEnv();
+	setupChild();
+	close(_pipe_body[0]); _pipe_body[0] = -1;
+	close(_pipe_output[1]);  _pipe_output[1] = -1;
+	_envTmp.clear();
+	_env.clear();
+	struct pollfd	pfd = {};
+	if (_request.method == "POST" && !_request.body.empty())
+	{
+		pfd.fd = _pipe_body[1];
+		pfd.events = POLLOUT;
+		_pfds.push_back(pfd);
+	}
+	else
+	{
+		close(_pipe_body[1]); _pipe_body[1] = -1;
+		pfd.fd = _pipe_output[0];
+		pfd.events = POLLIN;
+		_pfds.push_back(pfd);
+	}
+}
+
+void	CgiHandler::setEnv()
+{
+	if (!_path_info.empty())
+		_envTmp.push_back("PATH_INFO=" + _path_info);
+	if (!_request.query_string.empty())
+		_envTmp.push_back("QUERY_STRING=" + _request.query_string);
+	_envTmp.push_back("REQUEST_METHOD=" + _request.method);
+	_envTmp.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	_envTmp.push_back("SERVER_PROTOCOL=HTTP/1.1");
+	_envTmp.push_back("SCRIPT_NAME=" + _script_name);
+	_envTmp.push_back("SERVER_NAME=" + _client.getClientServer()->getServerName());
+	_envTmp.push_back("REDIRECT_STATUS=200");
+	if (_request.method == "POST")
+	{
+		if (_request.headers.count("content-type"))
+			_envTmp.push_back("CONTENT_TYPE=" + _request.headers["content-type"]);
+		if (_request.headers.count("content-length"))
+			_envTmp.push_back("CONTENT_LENGTH=" + _request.headers["content-length"]);
+	}
+	for (size_t i = 0; i < _envTmp.size(); i++)
+		_env.push_back(_envTmp[i].c_str());
+	_env.push_back(NULL);
+}
+/* ----------------------- CGI Setup (private methods) ---------------------- */
+void	CgiHandler::setupPipe()
+{
 	if (pipe(_pipe_body) < 0)
 		throw std::runtime_error("pipe body failed");
 	if (pipe(_pipe_output) < 0)
 	{
-		close(_pipe_body[0]);
-		close(_pipe_body[1]);
+		close(_pipe_body[0]); _pipe_body[0] = -1;
+		close(_pipe_body[1]); _pipe_body[1] = -1;
 		throw std::runtime_error("pipe output failed");
 	}
-	if (fcntl(_pipe_body[1], F_SETFL, O_NONBLOCK) == -1 || fcntl(_pipe_output[0], F_SETFL, O_NONBLOCK) == -1)
-		throw std::runtime_error("fcntl in cgi failed");
-	setEnv();
+}
+
+void	CgiHandler::setupChild()
+{
 	_pid = fork();
 	if (_pid < 0)
 	{
@@ -86,36 +130,22 @@ void	CgiHandler::cgiSetup()
 		close(_pipe_output[1]);	_pipe_output[1] = -1;
 		throw std::runtime_error("fork failed");
 	}
-}
-
-void	CgiHandler::setEnv()
-{
-	std::vector<std::string>	env;
-
-	if (!_path_info.empty())
-		env.push_back("PATH_INFO=" + _path_info);
-	if (!_request.query_string.empty())
-		env.push_back("QUERY_STRING=" + _request.query_string);
-	env.push_back("REQUEST_METHOD=" + _request.method);
-	env.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
-	env.push_back("SCRIPT_NAME=" + _script_name);
-	env.push_back("SERVER_NAME=" + _client.getClientServer()->getServerName());
-	env.push_back("SERVER_PORT=" + _client.getClientServer()->getPort());
-	env.push_back("REDIRECT_STATUS=200");
-	if (_request.method == "POST")
+	if (_pid == 0)
 	{
-		if (_request.headers.count("content-type"))
-			env.push_back("CONTENT_TYPE=" + _request.headers["content-type"]);
-		if (_request.headers.count("content-length"))
-			env.push_back("CONTENT_LENGTH=" + _request.headers["content-length"]);
+		dup2(_pipe_body[0], STDIN_FILENO);
+		dup2(_pipe_output[1], STDOUT_FILENO);
+		close(_pipe_body[0]); _pipe_body[0] = -1;
+		close(_pipe_body[1]); _pipe_body[1] = -1;
+		close(_pipe_output[0]); _pipe_output[0] = -1;
+		close(_pipe_output[1]); _pipe_output[1] = -1;
+		//////////////
+		char* argv[] = {(char*)"non", (char*)"non", NULL};
+		if (execve("/usr/b", argv, const_cast<char* const *>(_env.data())) < 0)
+		{
+			_envTmp.clear();
+			_env.clear();
+		}
+		////////////
+		exit(1);
 	}
-	_env = new char*[env.size() + 1];
-	for (size_t i = 0; i < env.size(); i++)
-	{
-		(_env)[i] = new char[env[i].size() + 1];
-		std::copy(env[i].begin(), env[i].end(), (_env)[i]);
-		(_env)[i][env[i].size()] = '\0';
-	}
-	(_env)[env.size()] = NULL;
 }

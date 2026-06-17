@@ -80,7 +80,7 @@ public:
 	void				buildErrorResponse(int code);
 	void				handleGet(const Location& loc);
 	void				handlePost(const Location& loc);
-	void				handleCGI(const Location& loc);
+	void				handleCGI(const Location& loc, std::vector<struct pollfd>& pfds);
 	void				handleDelete();
 	void				sendResponse();
 	void				validateAndReplacePath(const Location& loc);

@@ -12,8 +12,6 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <algorithm>
-#include <sys/types.h>
-#include <sys/wait.h>
 
 /* ----------------------- Constructor and Destructor ----------------------- */
 Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
@@ -355,9 +353,9 @@ bool	Client::hasCompleteBody()
 	return (false);
 }
 
-void	Client::handleCGI(const Location& loc)
+void	Client::handleCGI(const Location& loc, std::vector<struct pollfd>& pfds)
 {
-	_cgi = new CgiHandler(_request, *this);
+	_cgi = new CgiHandler(_request, *this, pfds);
 	_cgi->extractCgiInfo(loc.getPath());
 	if (_request.error_code != 0)
 		return ;
