@@ -26,7 +26,7 @@ private:
 	void	acceptNewClient(size_t pfds_pos);
 	void	handleClientRequest(size_t& pfds_pos);
 	void	handleClientResponse(size_t& pfds_pos);
-	void	processClientRequest(Client& client, std::vector<struct pollfd>& pfds);
+	void	processClientRequest(Client& client);
 	void	closeConnection(size_t& pfds_pos);
 // Error handling
 	void	handleInitOrAcceptError(int fd, const std::string& msg);

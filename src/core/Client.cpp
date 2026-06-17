@@ -59,6 +59,7 @@ const ServerConfig*	Client::getClientServer() const { return (_server); }
 ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
 time_t				Client::getLastTimeActivity() const { return (_last_time_activity); }
 const std::string&	Client::getLogMsg() const { return (_response.getLogMsg()); }
+CgiHandler*			Client::getCgi() const		{ return (_cgi); }
 
 /* -------------------------------- Response -------------------------------- */
 void	Client::parseMultipartIfNeeded()
@@ -353,9 +354,9 @@ bool	Client::hasCompleteBody()
 	return (false);
 }
 
-void	Client::handleCGI(const Location& loc, std::vector<struct pollfd>& pfds)
+void	Client::handleCGI(const Location& loc)
 {
-	_cgi = new CgiHandler(_request, *this, pfds);
+	_cgi = new CgiHandler(_request, *this);
 	_cgi->extractCgiInfo(loc.getPath());
 	if (_request.error_code != 0)
 		return ;
@@ -369,7 +370,6 @@ void	Client::handleCGI(const Location& loc, std::vector<struct pollfd>& pfds)
 	}
 	else
 		return buildErrorResponse(_request.error_code);
-	_cgi->cgiSetup();
 }
 
 void	Client::handlePost(const Location& loc)

@@ -215,7 +215,7 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 			return closeConnection(pfds_pos);
 		}
 		if (it->second->getStatus() == Client::PROCESSING)
-			processClientRequest(*it->second, _pfds);
+			processClientRequest(*it->second);
 		if (it->second->getStatus() == Client::WRITING || it->second->getStatus() == Client::ERROR)
 			_pfds[pfds_pos].events = POLLOUT;
 	}
@@ -248,7 +248,7 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 		closeConnection(pfds_pos);
 }
 
-void	ServerManager::processClientRequest(Client& client, std::vector<struct pollfd>& pfds)
+void	ServerManager::processClientRequest(Client& client)
 {
 	const Location*	location = client.getClientServer()->findLocation(client.getRequest().path);
 	if (location == NULL)
@@ -259,7 +259,14 @@ void	ServerManager::processClientRequest(Client& client, std::vector<struct poll
 	if (client.getStatus() == Client::ERROR)
 		return ;
 	if (!location->getCgiExt().empty() && !location->getCgiPath().empty())
-		return client.handleCGI(*location, pfds);
+	{
+		client.handleCGI(*location);
+		if (client.getStatus() == Client::ERROR)
+			return ;
+		struct pollfd pfd = client.getCgi()->cgiSetup();
+		_pfds.push_back(pfd);
+		return ;
+	}
 	if (client.getRequest().method == "GET")
 		client.handleGet(*location);
 	else if (client.getRequest().method == "POST")

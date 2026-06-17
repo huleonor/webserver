@@ -24,7 +24,6 @@ private:
 	Client&						_client;
 	std::vector<std::string>	_envTmp;
 	std::vector<const char*>	_env;
-	std::vector<struct pollfd>&	_pfds;
 
 // Non-copyable (owns a unique socket fd)
 	CgiHandler(const CgiHandler& other);
@@ -36,7 +35,7 @@ private:
 
 public:
 // Lifecycle
-	CgiHandler(HttpRequest& request, Client& client, std::vector<struct pollfd>& pfds);
+	CgiHandler(HttpRequest& request, Client& client);
 	~CgiHandler();
 
 // Getters
@@ -49,7 +48,7 @@ public:
 	void	extractCgiInfo(const std::string& loc);
 
 // CGI Setup
-	void	cgiSetup();
+	struct pollfd	cgiSetup();
 };
 
 

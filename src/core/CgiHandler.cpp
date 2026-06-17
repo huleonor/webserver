@@ -7,11 +7,10 @@
 #include <iostream>
 
 /* -------------------------------- Lifecycle ------------------------------- */
-CgiHandler::CgiHandler(HttpRequest& request,  Client& client, std::vector<struct pollfd>& pfds)
+CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
 			: _pid(-1),
 			_request(request),
-			_client(client),
-			_pfds(pfds)
+			_client(client)
 {
 	_pipe_body[0] = -1;
 	_pipe_body[1] = -1;
@@ -54,7 +53,7 @@ void	CgiHandler::extractCgiInfo(const std::string& loc)
 		_client.buildErrorResponse(400);
 }
 /* -------------------------------- CGI Setup ------------------------------- */
-void	CgiHandler::cgiSetup()
+struct pollfd CgiHandler::cgiSetup()
 {
 	setupPipe();
 	if (fcntl(_pipe_body[1], F_SETFL, O_NONBLOCK) == -1 || fcntl(_pipe_output[0], F_SETFL, O_NONBLOCK) == -1)
@@ -72,15 +71,12 @@ void	CgiHandler::cgiSetup()
 	{
 		pfd.fd = _pipe_body[1];
 		pfd.events = POLLOUT;
-		_pfds.push_back(pfd);
+		return (pfd);
 	}
-	else
-	{
-		close(_pipe_body[1]); _pipe_body[1] = -1;
-		pfd.fd = _pipe_output[0];
-		pfd.events = POLLIN;
-		_pfds.push_back(pfd);
-	}
+	close(_pipe_body[1]); _pipe_body[1] = -1;
+	pfd.fd = _pipe_output[0];
+	pfd.events = POLLIN;
+	return (pfd);
 }
 
 void	CgiHandler::setEnv()
