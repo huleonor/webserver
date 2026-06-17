@@ -228,8 +228,3 @@ CGI has subtle requirements around environment variables, `fork()`/`exec()` setu
 The `webserver/` refactor used AI to identify structural improvements over `Webserv_42` — such as separating directive parsing into dedicated functions and cleaning up the `Location`/`ServerConfig` interfaces.
 
 > **Note**: All final code was written, reviewed, and tested by the developers. AI was used as a reference and reasoning tool, not as a code generator.
-
-
-
- make save MSG="feat: add CGI pipe registration and harden event loop fd handling.SetuP CGI pipes in poll loop and add FD_CLOEXEC to all socket and pipe fds so child processes don't inherit parent descriptors on execve.
-POLLIN/POLLOUT/POLLHUP/POLLERR handlers"
