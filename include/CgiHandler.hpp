@@ -2,6 +2,7 @@
 # define CGI_HANDLER
 
 #include <string>
+#include <unistd.h>
 #include "HttpRequest.hpp"
 
 class Client;
