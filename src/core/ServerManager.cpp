@@ -98,7 +98,7 @@ void	ServerManager::start()
 	for (size_t i = 0; i < _servers.size(); i++)
 		std::cout << "\033[33m[Server: " << _servers[i].getServerName() << ":" 
 		<< _servers[i].getHost() << ":" << _servers[i].getPort() 
-		<< "] Server running...\033[0m\n" << std::endl;
+		<< "] Server running...\033[0m" << std::endl;
 	while(_running)
 	{
 		int	num_events = poll(&_pfds[0], _pfds.size(), 60000);
