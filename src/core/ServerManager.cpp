@@ -11,6 +11,7 @@
 #include <cerrno>
 #include <stdexcept>
 #include <algorithm>
+#include <sys/wait.h>
 
 static std::string	toAddrStr(in_addr_t addr)
 {
@@ -118,6 +119,8 @@ void	ServerManager::monitorClients()
 	for (size_t i = _servers.size(); i < _pfds.size(); i++)
 	{
 		client_it	it = _clients.find(_pfds[i].fd);
+		if (it == _clients.end())
+			continue;
 		Client* c = it->second;
 		if (c->getStatus() != Client::READING_HEADER && c->getStatus() != Client::READING_BODY)
             continue;
@@ -134,14 +137,12 @@ void	ServerManager::handleEvent()
 {
 	for (size_t i = 0; i < _pfds.size(); i++)
 	{
-		if (_pfds[i].revents & POLLERR)
+		if (_pfds[i].revents & POLLHUP || _pfds[i].revents & POLLERR)
 		{
-			client_it	it = _clients.find(_pfds[i].fd);
-			if (it != _clients.end())
-			{
-				it->second->setLogMsg("Connection error (POLLERR)");
-				closeConnection(i); continue;
-			}
+			if (_clients.count(_pfds[i].fd))
+				handleClientPollCleanUp(i);
+			if (_cgi_pipes.count(_pfds[i].fd))
+				handleCgiPollCleanUp(i);
 		}
 		if (_pfds[i].revents & POLLIN)
 		{
@@ -152,22 +153,43 @@ void	ServerManager::handleEvent()
 		}
 		if (_pfds[i].revents & POLLOUT)
 			handleClientResponse(i);
-		if (_pfds[i].revents & POLLHUP)
-		{
-			if (_clients.count(_pfds[i].fd))
-				handlePollHup(i); 
-		}
 	}
 }
 
-void	ServerManager::handlePollHup(size_t& pfds_pos)
+void	ServerManager::handleClientPollCleanUp(size_t& pfds_pos)
 {
-	if (_clients.count(_pfds[pfds_pos].fd))
-	{
 		Client*	client = _clients[_pfds[pfds_pos].fd];
-		client->setLogMsg("Connection close (POLLHUP)");
+		client->setLogMsg("Connection closed (POLLHUP or POLLERR)");
 		closeConnection(pfds_pos);
+}
+
+void	ServerManager::handleCgiPollCleanUp(size_t& pfds_pos)
+{
+	Client* client = _cgi_pipes[_pfds[pfds_pos].fd];
+	CgiHandler* cgi= client->getCgi();
+	int	client_fd = client->getClientSocket();
+	int status;
+	pid_t	result = waitpid(cgi->getPid(), &status, WNOHANG);
+	if (result == 0)
+	{
+		kill(client->getCgi()->getPid(), SIGKILL);
+		waitpid(cgi->getPid(), &status, 0);
 	}
+	if (cgi->getPipeBody()[1] != -1) close(cgi->getPipeBody()[1]);
+	if (cgi->getPipeOutput()[0] != -1) close(cgi->getPipeOutput()[0]);
+	_cgi_pipes.erase(_pfds[pfds_pos].fd);
+	_pfds.erase(_pfds.begin() + pfds_pos);
+	for (size_t i = 0; i < _pfds.size(); i++)
+	{
+		if (_pfds[i].fd == client_fd)
+		{
+			_pfds[i].events = POLLOUT; 
+			break;
+		}
+	}
+	client->buildErrorResponse(500);
+	client->setLogMsg("CGI closed (POLLHUP or POLLERR)");
+	pfds_pos--;
 }
 
 /* ---------------------------- Client Management --------------------------- */

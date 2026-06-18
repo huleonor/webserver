@@ -45,6 +45,9 @@ public:
 	const std::string&	getFilename() const;
 	const std::string&	getScriptName() const;
 	const std::string&	getPathInfo() const;
+	pid_t				getPid() const;
+	const int*			getPipeBody() const;
+	const int*			getPipeOutput() const;
 
 // CGI Parsing
 	void	extractCgiInfo(const std::string& loc);

@@ -30,6 +30,9 @@ const std::string&	CgiHandler::getExt() const			{ return (_ext); }
 const std::string&	CgiHandler::getFilename() const		{ return (_filename); }
 const std::string&	CgiHandler::getScriptName() const	{ return (_script_path); }
 const std::string&	CgiHandler::getPathInfo() const		{ return (_path_info); }
+pid_t				CgiHandler::getPid() const			{ return (_pid); }
+const int*			CgiHandler::getPipeBody() const		{ return (_pipe_body); }
+const int*			CgiHandler::getPipeOutput() const	{ return (_pipe_output); }
 
 /* ------------------------------- CGI Parsing ------------------------------ */
 void	CgiHandler::extractCgiInfo(const std::string& loc)
@@ -77,12 +80,27 @@ struct pollfd CgiHandler::cgiSetup()
 	{
 		pfd.fd = _pipe_body[1];
 		pfd.events = POLLOUT;
-		return (pfd);
 	}
-	close(_pipe_body[1]); _pipe_body[1] = -1;
-	pfd.fd = _pipe_output[0];
-	pfd.events = POLLIN;
+	else
+	{
+		close(_pipe_body[1]); _pipe_body[1] = -1;
+		pfd.fd = _pipe_output[0];
+		pfd.events = POLLIN;
+	}
 	return (pfd);
+}
+
+/* ----------------------- CGI Setup (private methods) ---------------------- */
+void	CgiHandler::setupPipe()
+{
+	if (pipe(_pipe_body) < 0)
+		throw std::runtime_error("pipe body failed");
+	if (pipe(_pipe_output) < 0)
+	{
+		close(_pipe_body[0]); _pipe_body[0] = -1;
+		close(_pipe_body[1]); _pipe_body[1] = -1;
+		throw std::runtime_error("pipe output failed");
+	}
 }
 
 void	CgiHandler::setEnv()
@@ -107,18 +125,6 @@ void	CgiHandler::setEnv()
 	for (size_t i = 0; i < _envTmp.size(); i++)
 		_env.push_back(_envTmp[i].c_str());
 	_env.push_back(NULL);
-}
-/* ----------------------- CGI Setup (private methods) ---------------------- */
-void	CgiHandler::setupPipe()
-{
-	if (pipe(_pipe_body) < 0)
-		throw std::runtime_error("pipe body failed");
-	if (pipe(_pipe_output) < 0)
-	{
-		close(_pipe_body[0]); _pipe_body[0] = -1;
-		close(_pipe_body[1]); _pipe_body[1] = -1;
-		throw std::runtime_error("pipe output failed");
-	}
 }
 
 void	CgiHandler::setupChild(char** argv)

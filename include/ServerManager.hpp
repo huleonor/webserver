@@ -31,7 +31,8 @@ private:
 // Error handling
 	void	handleInitOrAcceptError(int fd, const std::string& msg);
 // Runtime
-	void	handlePollHup(size_t& pfds_pos);
+	void	handleClientPollCleanUp(size_t& pfds_pos);
+	void	handleCgiPollCleanUp(size_t& pfds_pos);
 	void	handleEvent();
 	bool	isServerSocket(size_t pos);
 	void	monitorClients();
