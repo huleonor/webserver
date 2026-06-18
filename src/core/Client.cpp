@@ -85,6 +85,9 @@ void	Client::buildErrorResponse(int code)
 	_response.setStatusPhrase(getErrorPhrase(code));
 	_response.buildError(*_server);
 	_status = ERROR;
+	std::ostringstream	oss;
+	oss << "error with code: " << code << " " << getErrorPhrase(code);
+	setLogMsg(oss.str());
 }
 
 static std::string	getMimeType(const std::string& path)

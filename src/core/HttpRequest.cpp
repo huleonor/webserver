@@ -182,6 +182,6 @@ bool	HttpRequest::resolvePathWithinRoot(const std::string& root)
 		return (false);
 	return (path.size() >= root.size() &&
 		path.substr(0, root.size()) == root &&
-		(path.size() == root.size() || path[root.size()] == '/'));
+		(path.size() == root.size() || path[root.size()] == '/' || root[root.size() - 1] == '/'));
 }
 

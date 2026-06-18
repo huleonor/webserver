@@ -18,7 +18,8 @@ private:
 	pid_t						_pid;
 	std::string					_ext;
 	std::string					_filename;
-	std::string 				_script_name;
+	std::string					_interpreter_path;
+	std::string 				_script_path;
 	std::string					_path_info;
 	HttpRequest&				_request;
 	Client&						_client;
@@ -31,7 +32,8 @@ private:
 // CGI Setup (private methods)
 	void	setEnv();
 	void	setupPipe();
-	void	setupChild();
+	void	setupChild(char** argv);
+	void	closeFds();
 
 public:
 // Lifecycle

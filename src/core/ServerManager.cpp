@@ -63,8 +63,6 @@ void	ServerManager::setupServers()
 				throw std::runtime_error("socket failed: " +  std::string(strerror(errno)));
 			if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
 				handleInitOrAcceptError(fd, "fcntl failed: " + std::string(strerror(errno)));
-			if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
-				handleInitOrAcceptError(fd, "fcntl cloexec failed: " + std::string(strerror(errno)));
 			int	optval = 1;
 			if (setsockopt(fd,  SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
 				handleInitOrAcceptError(fd, "setsockopt failed: " +  std::string(strerror(errno)));
@@ -187,8 +185,6 @@ void	ServerManager::acceptNewClient(size_t pfds_pos)
 				break;
 			if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
 				handleInitOrAcceptError(client_fd, "fcntl failed: " + std::string(strerror(errno)));
-			if (fcntl(client_fd, F_SETFD, FD_CLOEXEC) == -1)
-				handleInitOrAcceptError(client_fd, "fcntl cloexec failed: " + std::string(strerror(errno)));
 			_clients.insert(std::make_pair(client_fd, new Client(client_fd, addr, _servers[pfds_pos])));
 			struct pollfd pfd = {};
 			pfd.fd = client_fd;
@@ -265,6 +261,7 @@ void	ServerManager::processClientRequest(Client& client)
 			return ;
 		struct pollfd pfd = client.getCgi()->cgiSetup();
 		_pfds.push_back(pfd);
+		_cgi_pipes[pfd.fd] = &client;
 		return ;
 	}
 	if (client.getRequest().method == "GET")
