@@ -293,7 +293,7 @@ void	ServerManager::handleCgiProcess(size_t& pfds_pos)
 	if (n > 0)
 		{ cgi->receiveCgiOutput(std::string(buffer, n)); return ; }
 	if (checkWaitpid(cgi) == 0)
-		{ processCgiOutput(client, cgi); return; } // processCgiOutput();parsing, etc
+		{ processCgiOutput(client, cgi); return; }
 	closeFdAndCleanMaps(cgi, pfds_pos);
 	processCgiClientResponse(client, 500);
 	client->setLogMsg("CGI closed (POLLHUP or POLLERR)");
