@@ -137,7 +137,7 @@ void	ServerManager::handleEvent()
 {
 	for (size_t i = 0; i < _pfds.size(); i++)
 	{
-		if (_pfds[i].revents & (POLLIN | POLLHUP | POLLERR))
+		if (_pfds[i].revents & (POLLIN | POLLHUP | POLLERR) && (_pfds[i].events & POLLIN))
 		{
 			if (isServerSocket(i))
 				acceptNewClient(i);
@@ -146,10 +146,12 @@ void	ServerManager::handleEvent()
 			else
 				handleCgiProcess(i);
 		}
-		if (_pfds[i].revents & POLLOUT)
+		if (_pfds[i].revents & (POLLOUT | POLLHUP | POLLERR) && (_pfds[i].events & POLLOUT))
 		{
 			if (_clients.count(_pfds[i].fd))
 				handleClientResponse(i);
+			else
+				handleCgiPollCleanUp(i);
 		}
 	}
 }
@@ -285,15 +287,13 @@ void	ServerManager::handleCgiProcess(size_t& pfds_pos)
 	CgiHandler* cgi = client->getCgi();
 	char	buffer[4096] = {0};
 
-	if (_pfds[pfds_pos].fd == cgi->getPipeBody()[1])
-       { handleCgiPollCleanUp(pfds_pos); return; }
 	ssize_t	n = read(_pfds[pfds_pos].fd, buffer, sizeof(buffer));
 	if (n < 0)
 		{ handleCgiPollCleanUp(pfds_pos); return ; }
 	if (n > 0)
 		{ cgi->receiveCgiOutput(std::string(buffer, n)); return ; }
 	if (checkWaitpid(cgi) == 0)
-		{ processCgiOutput(client, cgi); return; } // processCgiOutput();parsing, etc
+		{ processCgiOutput(client, cgi); return; }
 	closeFdAndCleanMaps(cgi, pfds_pos);
 	processCgiClientResponse(client, 500);
 	client->setLogMsg("CGI closed (POLLHUP or POLLERR)");
@@ -301,6 +301,8 @@ void	ServerManager::handleCgiProcess(size_t& pfds_pos)
 
 void	ServerManager::processCgiOutput(Client* client, CgiHandler* cgi)
 {
+	(void)client;
+	(void)cgi;
 	// parsing
 }
 
