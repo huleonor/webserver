@@ -16,6 +16,7 @@ private:
 	int							_pipe_body[2];
 	int							_pipe_output[2];
 	pid_t						_pid;
+	std::string					_cgi_output_buffer;
 	std::string					_ext;
 	std::string					_filename;
 	std::string					_interpreter_path;
@@ -48,6 +49,9 @@ public:
 	pid_t				getPid() const;
 	const int*			getPipeBody() const;
 	const int*			getPipeOutput() const;
+
+// CGI Process
+	void	receiveCgiOutput(const std::string& buffer);
 
 // CGI Parsing
 	void	extractCgiInfo(const std::string& loc);

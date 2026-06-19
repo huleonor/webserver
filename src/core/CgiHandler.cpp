@@ -31,8 +31,8 @@ const std::string&	CgiHandler::getFilename() const		{ return (_filename); }
 const std::string&	CgiHandler::getScriptName() const	{ return (_script_path); }
 const std::string&	CgiHandler::getPathInfo() const		{ return (_path_info); }
 pid_t				CgiHandler::getPid() const			{ return (_pid); }
-const int*			CgiHandler::getPipeBody() const		{ return (_pipe_body); }
-const int*			CgiHandler::getPipeOutput() const	{ return (_pipe_output); }
+const int*			CgiHandler::getPipeBody() const			{ return (_pipe_body); }
+const int*			CgiHandler::getPipeOutput() const		{ return (_pipe_output); }
 
 /* ------------------------------- CGI Parsing ------------------------------ */
 void	CgiHandler::extractCgiInfo(const std::string& loc)
@@ -89,6 +89,10 @@ struct pollfd CgiHandler::cgiSetup()
 	}
 	return (pfd);
 }
+
+
+/* ------------------------------- CGI Process ------------------------------ */
+void	CgiHandler::receiveCgiOutput(const std::string& buffer)	{ _cgi_output_buffer += buffer; }
 
 /* ----------------------- CGI Setup (private methods) ---------------------- */
 void	CgiHandler::setupPipe()

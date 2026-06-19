@@ -28,11 +28,17 @@ private:
 	void	handleClientResponse(size_t& pfds_pos);
 	void	processClientRequest(Client& client);
 	void	closeConnection(size_t& pfds_pos);
+// CGI Management
+	void	handleCgiProcess(size_t& pfds_pos);
+	void	processCgiOutput(Client* client, CgiHandler* cgi);
+	int		checkWaitpid(CgiHandler* cgi);
+	void	closeFdAndCleanMaps(CgiHandler* cgi, size_t& pfds_pos);
+	void	processCgiClientResponse(Client* client, int code);
+	void	handleCgiPollCleanUp(size_t& pfds_pos);
 // Error handling
 	void	handleInitOrAcceptError(int fd, const std::string& msg);
 // Runtime
 	void	handleClientPollCleanUp(size_t& pfds_pos);
-	void	handleCgiPollCleanUp(size_t& pfds_pos);
 	void	handleEvent();
 	bool	isServerSocket(size_t pos);
 	void	monitorClients();

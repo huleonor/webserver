@@ -137,22 +137,20 @@ void	ServerManager::handleEvent()
 {
 	for (size_t i = 0; i < _pfds.size(); i++)
 	{
-		if (_pfds[i].revents & POLLHUP || _pfds[i].revents & POLLERR)
-		{
-			if (_clients.count(_pfds[i].fd))
-				handleClientPollCleanUp(i);
-			if (_cgi_pipes.count(_pfds[i].fd))
-				handleCgiPollCleanUp(i);
-		}
-		if (_pfds[i].revents & POLLIN)
+		if (_pfds[i].revents & (POLLIN | POLLHUP | POLLERR))
 		{
 			if (isServerSocket(i))
 				acceptNewClient(i);
 			else if (_clients.count(_pfds[i].fd))
 				handleClientRequest(i);
+			else
+				handleCgiProcess(i);
 		}
 		if (_pfds[i].revents & POLLOUT)
-			handleClientResponse(i);
+		{
+			if (_clients.count(_pfds[i].fd))
+				handleClientResponse(i);
+		}
 	}
 }
 
@@ -161,35 +159,6 @@ void	ServerManager::handleClientPollCleanUp(size_t& pfds_pos)
 		Client*	client = _clients[_pfds[pfds_pos].fd];
 		client->setLogMsg("Connection closed (POLLHUP or POLLERR)");
 		closeConnection(pfds_pos);
-}
-
-void	ServerManager::handleCgiPollCleanUp(size_t& pfds_pos)
-{
-	Client* client = _cgi_pipes[_pfds[pfds_pos].fd];
-	CgiHandler* cgi= client->getCgi();
-	int	client_fd = client->getClientSocket();
-	int status;
-	pid_t	result = waitpid(cgi->getPid(), &status, WNOHANG);
-	if (result == 0)
-	{
-		kill(client->getCgi()->getPid(), SIGKILL);
-		waitpid(cgi->getPid(), &status, 0);
-	}
-	if (cgi->getPipeBody()[1] != -1) close(cgi->getPipeBody()[1]);
-	if (cgi->getPipeOutput()[0] != -1) close(cgi->getPipeOutput()[0]);
-	_cgi_pipes.erase(_pfds[pfds_pos].fd);
-	_pfds.erase(_pfds.begin() + pfds_pos);
-	for (size_t i = 0; i < _pfds.size(); i++)
-	{
-		if (_pfds[i].fd == client_fd)
-		{
-			_pfds[i].events = POLLOUT; 
-			break;
-		}
-	}
-	client->buildErrorResponse(500);
-	client->setLogMsg("CGI closed (POLLHUP or POLLERR)");
-	pfds_pos--;
 }
 
 /* ---------------------------- Client Management --------------------------- */
@@ -307,6 +276,92 @@ void	ServerManager::closeConnection(size_t& pfds_pos)
 	std::cout << "\033[31m[INFO]: " <<  addr << ":" 
 			  << port  << " | disconnected (" << msg << ")\033[0m" 
 			  << std::endl;
+}
+
+/* ----------------------------- CGI Management ----------------------------- */
+void	ServerManager::handleCgiProcess(size_t& pfds_pos)
+{
+	Client*	client = _cgi_pipes[_pfds[pfds_pos].fd];
+	CgiHandler* cgi = client->getCgi();
+	char	buffer[4096] = {0};
+
+	if (_pfds[pfds_pos].fd == cgi->getPipeBody()[1])
+       { handleCgiPollCleanUp(pfds_pos); return; }
+	ssize_t	n = read(_pfds[pfds_pos].fd, buffer, sizeof(buffer));
+	if (n < 0)
+		{ handleCgiPollCleanUp(pfds_pos); return ; }
+	if (n > 0)
+		{ cgi->receiveCgiOutput(std::string(buffer, n)); return ; }
+	if (checkWaitpid(cgi) == 0)
+		{ processCgiOutput(client, cgi); return; } // processCgiOutput();parsing, etc
+	closeFdAndCleanMaps(cgi, pfds_pos);
+	processCgiClientResponse(client, 500);
+	client->setLogMsg("CGI closed (POLLHUP or POLLERR)");
+}
+
+void	ServerManager::processCgiOutput(Client* client, CgiHandler* cgi)
+{
+	// parsing
+}
+
+int	ServerManager::checkWaitpid(CgiHandler* cgi)
+{
+	int	status;
+	int	toReturn = 0;
+	pid_t	result = waitpid(cgi->getPid(), &status, WNOHANG);
+
+	if (result < 0)
+		toReturn = -1;
+	if (result > 0)
+	{
+		if (WIFEXITED(status))
+			(WEXITSTATUS(status) == 0) ? toReturn = 0 : toReturn = -1;
+		else
+			toReturn = -1;
+	}
+	else if (result == 0)
+	{
+		kill(cgi->getPid(), SIGKILL);
+		waitpid(cgi->getPid(), &status, 0);
+		toReturn = -1;
+	}
+	return (toReturn);
+}
+
+void	ServerManager::closeFdAndCleanMaps(CgiHandler* cgi, size_t& pfds_pos)
+{
+	if (cgi->getPipeBody()[1] != -1) close(cgi->getPipeBody()[1]);
+	if (cgi->getPipeOutput()[0] != -1) close(cgi->getPipeOutput()[0]);
+	_cgi_pipes.erase(_pfds[pfds_pos].fd);
+	_pfds.erase(_pfds.begin() + pfds_pos);
+	pfds_pos--;
+}
+
+void	ServerManager::processCgiClientResponse(Client* client, int code)
+{
+	int	client_socket = client->getClientSocket();
+	if (client->getStatus() == Client::ERROR)
+		client->buildErrorResponse(code);
+	for (size_t i = 0; i < _pfds.size(); i++)
+	{
+		if (_pfds[i].fd == client_socket)
+		{
+			_pfds[i].events = POLLOUT; 
+			break;
+		}
+	}
+}
+
+void	ServerManager::handleCgiPollCleanUp(size_t& pfds_pos)
+{
+	Client* client = _cgi_pipes[_pfds[pfds_pos].fd];
+	CgiHandler* cgi= client->getCgi();
+
+	checkWaitpid(cgi);
+	closeFdAndCleanMaps(cgi, pfds_pos);
+	client->setStatus(Client::ERROR);
+	processCgiClientResponse(client, 500);
+	client->setLogMsg("CGI closed (POLLHUP or POLLERR)");
 }
 
 /* ----------------------------- Signal handling ---------------------------- */
