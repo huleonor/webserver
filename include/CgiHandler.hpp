@@ -11,11 +11,20 @@ class Client;
 
 class CgiHandler
 {
+public:
+	enum Status
+	{
+		NONE,
+		DONE,
+		ERROR
+	};
 private:
 // Attributes
+	Status						_status;
 	int							_pipe_body[2];
 	int							_pipe_output[2];
 	pid_t						_pid;
+	size_t						_body_bytes_sent;
 	std::string					_cgi_output_buffer;
 	std::string					_ext;
 	std::string					_filename;
@@ -34,7 +43,7 @@ private:
 	void	setEnv();
 	void	setupPipe();
 	void	setupChild(char** argv);
-	void	closeFds();
+	void	closeAllFds();
 
 public:
 // Lifecycle
@@ -50,12 +59,20 @@ public:
 	pid_t				getPid() const;
 	const int*			getPipeBody() const;
 	const int*			getPipeOutput() const;
+	Status				getStatus() const;
+
+// Setters
+	void				setStatus(Status status);
 
 // Setters
 	void	setInterpreterPath(const std::string& path);
 
 // CGI Process
 	void	receiveCgiOutput(const std::string& buffer);
+	void	sendBody(const std::string& body);
+	int		checkWaitpid();
+	void	closeAllOpenPipeFds();
+	void	closePipeFd(int fd);
 
 // CGI Parsing
 	void	extractCgiInfo(const std::string& loc);

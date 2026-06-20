@@ -30,11 +30,11 @@ private:
 	void	closeConnection(size_t& pfds_pos);
 // CGI Management
 	void	handleCgiProcess(size_t& pfds_pos);
-	void	processCgiOutput(Client* client, CgiHandler* cgi);
-	int		checkWaitpid(CgiHandler* cgi);
-	void	closeFdAndCleanMaps(CgiHandler* cgi, size_t& pfds_pos);
+	void	sendCgiBody(size_t& pfds_pos);
+	void	processCgiOutput(Client* client, CgiHandler* cgi, size_t& pfds_pos);
+	void	closeFdAndCleanMaps(CgiHandler* cgi, size_t& pfds_pos, bool closeFds);
 	void	processCgiClientResponse(Client* client, int code);
-	void	handleCgiPollCleanUp(size_t& pfds_pos);
+	void	handleCgiPollCleanUp(size_t& pfds_pos, const std::string& logMsg);
 // Error handling
 	void	handleInitOrAcceptError(int fd, const std::string& msg);
 // Runtime

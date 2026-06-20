@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
+import sys
+import os
 
-#!/usr/bin/env python3
+length = int(os.environ.get("CONTENT_LENGTH", 0))
+body = sys.stdin.read(length) if length > 0 else ""
 
-print("Content-Type: text/html\r")
-print("\r")
-print("<html>")
-print("<body>")
-print("<h1>Ola!</h1>")
-print("</body>")
-print("</html>")
+sys.stdout.write("Content-Type: text/plain\r\n")
+sys.stdout.write("\r\n")
+sys.stdout.write("This is the body:\n")
+sys.stdout.write(body + "\n")

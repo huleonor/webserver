@@ -74,7 +74,8 @@ void	Response::setHeaders()
 	std::ostringstream	oss;
 
 	oss << "Content-Type: text/html\r\n" 
-		<< "Content-Length: " << _body.size() 
+		<< "Content-Length: " << _body.size() << "\r\n"
+		<< "Connection: close" 
 		<< "\r\n" << "\r\n";
 	_headers = oss.str();
 }
