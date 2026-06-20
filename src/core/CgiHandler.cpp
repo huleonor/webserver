@@ -27,9 +27,6 @@ CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
 
 CgiHandler::~CgiHandler() {}
 
-/* --------------------------------- Setters -------------------------------- */
-void	CgiHandler::setInterpreterPath(const std::string& path) { _interpreter_path = path; }
-
 /* --------------------------------- Getters -------------------------------- */
 const std::string&		CgiHandler::getExt() const			{ return (_ext); }
 const std::string&		CgiHandler::getFilename() const		{ return (_filename); }
@@ -43,14 +40,6 @@ CgiHandler::Status		CgiHandler::getStatus() const		{ return (_status); }
 
 /* --------------------------------- Setters -------------------------------- */
 void	CgiHandler::setStatus(Status status)				{ _status = status; }
-const std::string&	CgiHandler::getExt() const			{ return (_ext); }
-const std::string&	CgiHandler::getFilename() const		{ return (_filename); }
-const std::string&	CgiHandler::getScriptName() const	{ return (_script_path); }
-const std::string&	CgiHandler::getPathInfo() const		{ return (_path_info); }
-const std::string&	CgiHandler::getCgiOutputBuffer() const	{ return (_cgi_output_buffer); }
-pid_t				CgiHandler::getPid() const			{ return (_pid); }
-const int*			CgiHandler::getPipeBody() const			{ return (_pipe_body); }
-const int*			CgiHandler::getPipeOutput() const		{ return (_pipe_output); }
 
 /* ------------------------------- CGI Parsing ------------------------------ */
 void	CgiHandler::extractCgiInfo(const std::string& loc)
