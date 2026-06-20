@@ -90,6 +90,15 @@ void	Client::buildErrorResponse(int code)
 	setLogMsg(oss.str());
 }
 
+void	Client::buildCgiResponse(const std::string& body)
+{
+	_response.setCodeStatus(200);
+	_response.setStatusPhrase("OK");
+	_response.setBody(body);
+	_response.buildSuccess("text/html");
+	_status = WRITING;
+}
+
 static std::string	getMimeType(const std::string& path)
 {
 	size_t dot = path.rfind('.');
@@ -364,8 +373,11 @@ void	Client::handleCGI(const Location& loc)
 	if (_request.error_code != 0)
 		return ;
 	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
-	if (std::find(cgi_exts.begin(), cgi_exts.end(), _cgi->getExt()) == cgi_exts.end())
+	const std::vector<std::string>&	cgi_paths = loc.getCgiPath();
+	size_t	idx = std::find(cgi_exts.begin(), cgi_exts.end(), _cgi->getExt()) - cgi_exts.begin();
+	if (idx >= cgi_exts.size())
 		return buildErrorResponse(403);
+	_cgi->setInterpreterPath(cgi_paths[idx]);
 	if (_request.isValidPath())
 	{
 		if (!(_request.target_info.st_mode & S_IXUSR))

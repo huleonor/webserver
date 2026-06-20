@@ -301,7 +301,15 @@ void	ServerManager::handleCgiProcess(size_t& pfds_pos)
 
 void	ServerManager::processCgiOutput(Client* client, CgiHandler* cgi)
 {
-	// parsing
+	const std::string&	output = cgi->getCgiOutputBuffer();
+	size_t				sep = output.find("\r\n\r\n");
+	std::string			body;
+
+	if (sep == std::string::npos)
+		body = output;
+	else
+		body = output.substr(sep + 4);
+	client->buildCgiResponse(body);
 }
 
 int	ServerManager::checkWaitpid(CgiHandler* cgi)

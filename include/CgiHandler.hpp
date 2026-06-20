@@ -46,17 +46,19 @@ public:
 	const std::string&	getFilename() const;
 	const std::string&	getScriptName() const;
 	const std::string&	getPathInfo() const;
+	const std::string&	getCgiOutputBuffer() const;
 	pid_t				getPid() const;
 	const int*			getPipeBody() const;
 	const int*			getPipeOutput() const;
+
+// Setters
+	void	setInterpreterPath(const std::string& path);
 
 // CGI Process
 	void	receiveCgiOutput(const std::string& buffer);
 
 // CGI Parsing
 	void	extractCgiInfo(const std::string& loc);
-
-// CGI Setup
 	struct pollfd	cgiSetup();
 };
 

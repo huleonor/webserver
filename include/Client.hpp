@@ -79,6 +79,7 @@ public:
 	void				setLogMsg(const std::string& msg);
 // Response
 	void				buildErrorResponse(int code);
+	void				buildCgiResponse(const std::string& body);
 	void				handleGet(const Location& loc);
 	void				handlePost(const Location& loc);
 	void				handleCGI(const Location& loc);
