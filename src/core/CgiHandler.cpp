@@ -13,7 +13,9 @@
 
 /* -------------------------------- Lifecycle ------------------------------- */
 CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
-			: _pid(-1),
+			: _status(NONE),
+			_pid(-1),
+			_body_bytes_sent(0),
 			_request(request),
 			_client(client)
 {
@@ -26,13 +28,17 @@ CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
 CgiHandler::~CgiHandler() {}
 
 /* --------------------------------- Getters -------------------------------- */
-const std::string&	CgiHandler::getExt() const			{ return (_ext); }
-const std::string&	CgiHandler::getFilename() const		{ return (_filename); }
-const std::string&	CgiHandler::getScriptName() const	{ return (_script_path); }
-const std::string&	CgiHandler::getPathInfo() const		{ return (_path_info); }
-pid_t				CgiHandler::getPid() const			{ return (_pid); }
-const int*			CgiHandler::getPipeBody() const			{ return (_pipe_body); }
-const int*			CgiHandler::getPipeOutput() const		{ return (_pipe_output); }
+const std::string&		CgiHandler::getExt() const			{ return (_ext); }
+const std::string&		CgiHandler::getFilename() const		{ return (_filename); }
+const std::string&		CgiHandler::getScriptName() const	{ return (_script_path); }
+const std::string&		CgiHandler::getPathInfo() const		{ return (_path_info); }
+pid_t					CgiHandler::getPid() const			{ return (_pid); }
+const int*				CgiHandler::getPipeBody() const		{ return (_pipe_body); }
+const int*				CgiHandler::getPipeOutput() const	{ return (_pipe_output); }
+CgiHandler::Status		CgiHandler::getStatus() const		{ return (_status); }
+
+/* --------------------------------- Setters -------------------------------- */
+void	CgiHandler::setStatus(Status status)				{ _status = status; }
 
 /* ------------------------------- CGI Parsing ------------------------------ */
 void	CgiHandler::extractCgiInfo(const std::string& loc)
@@ -90,9 +96,69 @@ struct pollfd CgiHandler::cgiSetup()
 	return (pfd);
 }
 
-
 /* ------------------------------- CGI Process ------------------------------ */
 void	CgiHandler::receiveCgiOutput(const std::string& buffer)	{ _cgi_output_buffer += buffer; }
+
+void	CgiHandler::sendBody(const std::string& body)
+{
+	const char*	buffer = body.c_str() + _body_bytes_sent;
+	size_t	buf_len = body.size() - _body_bytes_sent;
+	int bytes = write(_pipe_body[1], buffer, buf_len);
+	if (bytes > 0)
+	{
+		_body_bytes_sent += bytes;
+		if (_body_bytes_sent == body.size())
+			_status = DONE;
+	}
+}
+
+int	CgiHandler::checkWaitpid()
+{
+	int	status;
+	int	toReturn = 0;
+	pid_t	result = waitpid(_pid, &status, WNOHANG);
+
+	if (result < 0)
+		toReturn = -1;
+	if (result > 0)
+	{
+		if (WIFEXITED(status))
+			(WEXITSTATUS(status) == 0) ? toReturn = 0 : toReturn = -1;
+		else
+			toReturn = -1;
+	}
+	else if (result == 0)
+	{
+		kill(_pid, SIGKILL);
+		waitpid(_pid, &status, 0);
+		toReturn = -1;
+	}
+	return (toReturn);
+}
+
+void	CgiHandler::closeAllOpenPipeFds()
+{
+	if (_pipe_body[1] != -1)
+		{ close(_pipe_body[1]); _pipe_body[1] = -1; };
+	if (_pipe_body[0] != -1)
+		{ close(_pipe_body[0]); _pipe_body[0] = -1; };
+	if (_pipe_output[0] != -1)
+		{ close(_pipe_output[0]); _pipe_output[0] = -1; };
+	if (_pipe_output[1] != -1)
+		{ close(_pipe_output[1]); _pipe_output[1] = -1; };
+}
+
+void	CgiHandler::closePipeFd(int fd)
+{
+	if (fd == _pipe_body[1] && _pipe_body[1] != -1)
+		{ close(_pipe_body[1]); _pipe_body[1] = -1; }
+	else if (fd == _pipe_body[0] && _pipe_body[0] != -1)
+		{ close(_pipe_body[0]); _pipe_body[0] = -1; }
+	else if (fd == _pipe_output[1] && _pipe_output[0] != -1)
+		{ close(_pipe_output[1]); _pipe_output[1] = -1; }
+	else if (fd == _pipe_output[0] && _pipe_output[0] != -1)
+		{ close(_pipe_output[0]); _pipe_output[0] = -1; };
+}
 
 /* ----------------------- CGI Setup (private methods) ---------------------- */
 void	CgiHandler::setupPipe()
@@ -101,8 +167,7 @@ void	CgiHandler::setupPipe()
 		throw std::runtime_error("pipe body failed");
 	if (pipe(_pipe_output) < 0)
 	{
-		close(_pipe_body[0]); _pipe_body[0] = -1;
-		close(_pipe_body[1]); _pipe_body[1] = -1;
+		closeAllOpenPipeFds();
 		throw std::runtime_error("pipe output failed");
 	}
 }
@@ -136,17 +201,14 @@ void	CgiHandler::setupChild(char** argv)
 	_pid = fork();
 	if (_pid < 0)
 	{
-		close(_pipe_body[0]);	_pipe_body[0] = -1;
-		close(_pipe_body[1]);	_pipe_body[1] = -1;
-		close(_pipe_output[0]);	_pipe_output[0] = -1;
-		close(_pipe_output[1]);	_pipe_output[1] = -1;
+		closeAllOpenPipeFds();
 		throw std::runtime_error("fork failed");
 	}
 	if (_pid == 0)
 	{
 		dup2(_pipe_body[0], STDIN_FILENO);
 		dup2(_pipe_output[1], STDOUT_FILENO);
-		closeFds();
+		closeAllFds();
 		if (execve(argv[0], argv, const_cast<char* const *>(_env.data())) < 0)
 		{
 			_envTmp.clear();
@@ -156,7 +218,7 @@ void	CgiHandler::setupChild(char** argv)
 	}
 }
 
-void	CgiHandler::closeFds()
+void	CgiHandler::closeAllFds()
 {
 	int max_fd = sysconf(_SC_OPEN_MAX);
 	for (int fd = 3; fd < max_fd; fd++)
