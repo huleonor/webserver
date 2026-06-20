@@ -107,7 +107,7 @@ void	CgiHandler::sendBody(const std::string& body)
 	if (bytes > 0)
 	{
 		_body_bytes_sent += bytes;
-		if (_body_bytes_sent == body.size())
+		if (_body_bytes_sent >= body.size())
 			_status = DONE;
 	}
 }
