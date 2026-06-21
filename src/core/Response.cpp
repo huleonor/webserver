@@ -91,8 +91,12 @@ void	Response::buildSuccess(const std::string& mimeType)
 {
 	setFirstLine();
 	std::ostringstream	oss;
-	oss << "Content-Type: " << mimeType << "\r\n"
-		<< "Content-Length: " << _body.size() << "\r\n\r\n";
+	if (!_body.empty())
+	{
+		oss << "Content-Type: " << mimeType << "\r\n" 
+			<< "Content-Length: " << _body.size();
+	}
+	oss << "Connection: close" << "\r\n\r\n";
 	_headers = oss.str();
 	setFullResponse();
 }
