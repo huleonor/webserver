@@ -130,6 +130,14 @@ void	ServerManager::monitorClients()
 			it->second->buildErrorResponse(408);
 			_pfds[i].events = POLLOUT;
 		}
+		CgiHandler* cgi = c->getCgi();
+		if (cgi && cgi->getPid() > 0 && time(NULL) - cgi->getStartTime() >= 10)
+		{
+			kill(cgi->getPid(), SIGKILL);
+			c->setLogMsg("CGI timeout");
+			c->buildErrorResponse(504);
+			_pfds[i].events = POLLOUT;
+		}
 	}
 }
 
@@ -324,12 +332,18 @@ void	ServerManager::processCgiOutput(Client* client, CgiHandler* cgi, size_t& pf
 {
 	const std::string&	output = cgi->getCgiOutputBuffer();
 	size_t				sep = output.find("\r\n\r\n");
+	size_t				offset = 4;
 	std::string			body;
 
 	if (sep == std::string::npos)
+	{
+		sep = output.find("\n\n");
+		offset = 2;
+	}
+	if (sep == std::string::npos)
 		body = output;
 	else
-		body = output.substr(sep + 4);
+		body = output.substr(sep + offset);
 	client->buildCgiResponse(body);
 	closeFdAndCleanMaps(cgi, pfds_pos, true);
 }

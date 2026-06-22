@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <ctime>
 #include <unistd.h>
 #include <poll.h>
 #include "HttpRequest.hpp"
@@ -25,6 +26,7 @@ private:
 	int							_pipe_output[2];
 	pid_t						_pid;
 	size_t						_body_bytes_sent;
+	time_t						_start_time;
 	std::string					_cgi_output_buffer;
 	std::string					_ext;
 	std::string					_filename;
@@ -57,6 +59,7 @@ public:
 	const std::string&	getPathInfo() const;
 	const std::string&	getCgiOutputBuffer() const;
 	pid_t				getPid() const;
+	time_t				getStartTime() const;
 	const int*			getPipeBody() const;
 	const int*			getPipeOutput() const;
 	Status				getStatus() const;
