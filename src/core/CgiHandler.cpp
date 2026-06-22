@@ -6,8 +6,6 @@
 #include <fcntl.h>
 #include <cstdlib>
 #include <iostream>
-
-
 #include <sys/wait.h>
 #include <cstdio>
 
@@ -16,7 +14,6 @@ CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
 			: _status(NONE),
 			_pid(-1),
 			_body_bytes_sent(0),
-			: _pid(-1),
 			_start_time(time(NULL)),
 			_request(request),
 			_client(client)
@@ -28,17 +25,6 @@ CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
 }
 
 CgiHandler::~CgiHandler() {}
-
-/* --------------------------------- Getters -------------------------------- */
-const std::string&		CgiHandler::getExt() const			{ return (_ext); }
-const std::string&		CgiHandler::getFilename() const		{ return (_filename); }
-const std::string&		CgiHandler::getScriptName() const	{ return (_script_path); }
-const std::string&		CgiHandler::getPathInfo() const		{ return (_path_info); }
-const std::string&		CgiHandler::getCgiOutputBuffer() const		{ return (_cgi_output_buffer); }
-pid_t					CgiHandler::getPid() const			{ return (_pid); }
-const int*				CgiHandler::getPipeBody() const		{ return (_pipe_body); }
-const int*				CgiHandler::getPipeOutput() const	{ return (_pipe_output); }
-CgiHandler::Status		CgiHandler::getStatus() const		{ return (_status); }
 
 /* --------------------------------- Setters -------------------------------- */
 void	CgiHandler::setStatus(Status status)				{ _status = status; }
@@ -54,6 +40,7 @@ pid_t				CgiHandler::getPid() const			{ return (_pid); }
 time_t				CgiHandler::getStartTime() const	{ return (_start_time); }
 const int*			CgiHandler::getPipeBody() const			{ return (_pipe_body); }
 const int*			CgiHandler::getPipeOutput() const		{ return (_pipe_output); }
+CgiHandler::Status		CgiHandler::getStatus() const		{ return (_status); }
 
 /* ------------------------------- CGI Parsing ------------------------------ */
 void	CgiHandler::extractCgiInfo(const std::string& loc)
