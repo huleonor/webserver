@@ -4,101 +4,13 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <cerrno>
 #include <unistd.h>
-#include <cstring>
 #include <dirent.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <algorithm>
 
-/* ----------------------- Constructor and Destructor ----------------------- */
-Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
-    : _client_socket(fd),
-      _client_addr(addr.sin_addr.s_addr),
-      _client_port(addr.sin_port),
-      _server(&server),
-      _request_buffer(),
-      _request(),
-      _content_length(0),
-      _chunked(false),
-      _status(READING_HEADER),
-      _bytes_sent(0),
-	  _last_time_activity(time(NULL)),
-	  _cgi(NULL)
-{
-}
-
-Client::~Client() 
-{ 
-	close(_client_socket); 
-	_client_socket = -1;
-	if (_cgi)
-	{
-		delete _cgi;
-		_cgi = NULL;
-	}
-}
-
-/* --------------------------------- Setters -------------------------------- */
-void	Client::setStatus(Status status)	{ _status = status; }
-void	Client::setBytesSent(ssize_t n)		{ _bytes_sent = n; }
-void	Client::setLastTimeActivity(time_t time)	{ _last_time_activity = time; }
-void	Client::setLogMsg(const std::string& msg)	{ _response.setLogMsg(msg); }
-
-/* --------------------------------- Getters -------------------------------- */
-int					Client::getClientSocket() const	{ return (_client_socket); }
-in_port_t			Client::getClientPort() const	{ return (_client_port); }
-in_addr_t			Client::getClientAddr() const	{ return (_client_addr); }
-Client::Status		Client::getStatus() const		{ return (_status); }
-const HttpRequest&	Client::getRequest() const		{ return (_request); }
-const Response&		Client::getResponse() const 	{ return (_response); }
-const std::string&	Client::getFullResponse() const		{ return (_response.getFullResponse()); }
-const ServerConfig*	Client::getClientServer() const { return (_server); }
-ssize_t				Client::getBytesSent() const	{ return (_bytes_sent); }
-time_t				Client::getLastTimeActivity() const { return (_last_time_activity); }
-const std::string&	Client::getLogMsg() const { return (_response.getLogMsg()); }
-CgiHandler*			Client::getCgi() const		{ return (_cgi); }
-
-/* -------------------------------- Response -------------------------------- */
-void	Client::parseMultipartIfNeeded()
-{
-	std::map<std::string, std::string>::iterator it = _request.headers.find("content-type");
-	if (it == _request.headers.end())
-		return ;
-	std::string& content_type = it->second;
-	if (content_type.find("multipart/form-data") == std::string::npos)
-		return ;
-	size_t boundary_pos = content_type.find("boundary=");
-	if (boundary_pos == std::string::npos)
-		return ;
-	std::string boundary = content_type.substr(boundary_pos + 9);
-	_request.parseMultipart(boundary);
-	if (_request.uploads.size() == 0)
-		buildErrorResponse(400);
-}
-
-void	Client::buildErrorResponse(int code)
-{
-	_response.setCodeStatus(code);
-	_response.setStatusPhrase(getErrorPhrase(code));
-	_response.buildError(*_server);
-	_status = ERROR;
-	std::ostringstream	oss;
-	oss << "error with code: " << code << " " << getErrorPhrase(code);
-	setLogMsg(oss.str());
-}
-
-void	Client::buildCgiResponse(const std::string& body)
-{
-	_response.setCodeStatus(200);
-	_response.setStatusPhrase("OK");
-	_response.setBody(body);
-	_response.buildSuccess("text/html");
-	_status = WRITING;
-}
-
+/* --------------------------------- Static --------------------------------- */
 static std::string	getMimeType(const std::string& path)
 {
 	size_t dot = path.rfind('.');
@@ -108,7 +20,7 @@ static std::string	getMimeType(const std::string& path)
 	if (ext == ".html" || ext == ".htm")	return "text/html";
 	if (ext == ".css")						return "text/css";
 	if (ext == ".js")						return "application/javascript";
-	if (ext == ".json")						return "application/json";
+	if (ext == ".json")					return "application/json";
 	if (ext == ".png")						return "image/png";
 	if (ext == ".jpg" || ext == ".jpeg")	return "image/jpeg";
 	if (ext == ".gif")						return "image/gif";
@@ -118,150 +30,7 @@ static std::string	getMimeType(const std::string& path)
 	return "application/octet-stream";
 }
 
-void	Client::handleGet(const Location& loc)
-{
-	// 2. redirect
-	if (!loc.getReturn().empty())
-	{
-		_response.setCodeStatus(301);
-		_response.setStatusPhrase("Moved Permanently");
-		_response.buildRedirect(loc.getReturn());
-		_status = WRITING;
-		return ;
-	}
-
-	if (_request.isValidPath() && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
-		_request.path += '/';
-
-	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
-	{
-		std::string	index = loc.getIndex().empty() ? _server->getIndex() : loc.getIndex();
-		std::ifstream	test((_request.path + index).c_str());
-		if (test.is_open())
-			_request.path += index;
-		else if (loc.getAutoindex())
-		{
-			buildAutoindex(_request.path);
-			return ;
-		}
-		else
-		{
-			buildErrorResponse(403);
-			return ;
-		}
-	}
-
-	std::ifstream	file(_request.path.c_str(), std::ios::binary);
-	if (!file.is_open())
-	{
-		buildErrorResponse(404);
-		return ;
-	}
-	std::ostringstream	ss;
-	ss << file.rdbuf();
-
-	_response.setCodeStatus(200);
-	_response.setStatusPhrase("OK");
-	_response.setBody(ss.str());
-	_response.buildSuccess(getMimeType(_request.path));
-	_status = WRITING;
-}
-
-/* ---------------------------------- DELETE --------------------------------- */
-void	Client::handleDelete()
-{
-	struct stat	st;
-	if (stat(_request.path.c_str(), &st) == -1)
-	{
-		buildErrorResponse(404);
-		return ;
-	}
-	if (S_ISDIR(st.st_mode))
-	{
-		buildErrorResponse(403);
-		return ;
-	}
-	if (remove(_request.path.c_str()) != 0)
-	{
-		buildErrorResponse(403);
-		return ;
-	}
-	struct in_addr tmp;
-	tmp.s_addr = _client_addr;
-	std::cout << "[DELETE]: " << inet_ntoa(tmp) << ":" << ntohs(_client_port)
-			  << " | file: " << _request.line_request << std::endl;
-	_response.setCodeStatus(204);
-	_response.setStatusPhrase("No Content");
-	_response.buildSuccess("");
-	_status = WRITING;
-}
-
-void	Client::buildAutoindex(const std::string& dirPath)
-{
-	DIR*			dir = opendir(dirPath.c_str());
-	if (!dir)
-	{
-		buildErrorResponse(403);
-		return ;
-	}
-	std::ostringstream	html;
-	html << "<html><head><title>Index of " << _request.path << "</title></head>"
-		 << "<body><h1>Index of " << _request.path << "</h1><hr><ul>";
-
-	struct dirent*	entry;
-	while ((entry = readdir(dir)) != NULL)
-	{
-		std::string name = entry->d_name;
-		if (name == ".")
-			continue ;
-		html << "<li><a href=\"" << _request.path << name << "\">" << name << "</a></li>";
-	}
-	closedir(dir);
-	html << "</ul><hr></body></html>";
-
-	_response.setCodeStatus(200);
-	_response.setStatusPhrase("OK");
-	_response.setBody(html.str());
-	_response.buildSuccess("text/html");
-	_status = WRITING;
-}
-
-void	Client::sendResponse()
-{
-	_status = WRITING;
-	size_t		responseSize = _response.getFullResponse().size();
-	size_t		bufferSize = responseSize - _bytes_sent;
-	const char*	buff = _response.getFullResponse().c_str() + _bytes_sent;
-	ssize_t		n = send(_client_socket, buff, bufferSize, 0);
-	if (n == -1)
-	{
-		_status = ERROR;
-		return ;
-	}
-	if ((size_t)(_bytes_sent += n) >= responseSize)
-		_status = CLOSE;
-}
-
-/* --------------------------------- Request Handling ----------------------- */
-ssize_t	Client::receiveData()
-{
-	char	buffer[4096] = {0};
-	ssize_t	n = recv(_client_socket, buffer, sizeof(buffer), 0);
-
-	if (n > 0)
-	{
-		if (_status == READING_HEADER)
-		{
-			receiveHeader(std::string(buffer, n));
-			if (_status == READING_BODY)
-				receiveBody("");
-		}
-		else if (_status == READING_BODY)
-			receiveBody(std::string(buffer, n));
-	}
-	return (n);
-}
-
+/* ---------------------------- Internal: Request --------------------------- */
 void	Client::receiveHeader(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
@@ -274,6 +43,8 @@ void	Client::receiveHeader(const std::string& request)
 	if (pos != std::string::npos)
 	{
 		std::string	header = _request_buffer.substr(0, pos);
+		if (header.empty())
+			return ;
 		_request_buffer.erase(0, pos + 4);
 		_request.parse(header);
 		struct in_addr tmp;
@@ -282,12 +53,7 @@ void	Client::receiveHeader(const std::string& request)
 				  << " | " << _request.line_request << std::endl;
 		if (_request.error_code != 0)
 		{
-			if (_request.error_code == 501)
-				buildErrorResponse(501);
-			else if (_request.error_code == 414)
-				buildErrorResponse(414);
-			else
-				buildErrorResponse(400);
+			buildErrorResponse(_request.error_code);
 			return ;
 		}
 		if (_request.headers.count("transfer-encoding"))
@@ -312,7 +78,14 @@ void	Client::receiveHeader(const std::string& request)
 			_status = (_content_length > 0) ? READING_BODY : PROCESSING;
 		}
 		else
+		{
+			if (!_request_buffer.empty())
+			{
+				buildErrorResponse(411);
+				return ;
+			}
 			_status = PROCESSING;
+		}
 	}
 }
 
@@ -366,51 +139,50 @@ bool	Client::hasCompleteBody()
 	return (false);
 }
 
-void	Client::handleCGI(const Location& loc)
+void	Client::parseMultipartIfNeeded()
 {
-	_cgi = new CgiHandler(_request, *this);
-	_cgi->extractCgiInfo(loc.getPath());
-	if (_request.error_code != 0)
+	std::map<std::string, std::string>::iterator it = _request.headers.find("content-type");
+	if (it == _request.headers.end())
 		return ;
-	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
-	const std::vector<std::string>&	cgi_paths = loc.getCgiPath();
-	size_t	idx = std::find(cgi_exts.begin(), cgi_exts.end(), _cgi->getExt()) - cgi_exts.begin();
-	if (idx >= cgi_exts.size())
-		return buildErrorResponse(403);
-	_cgi->setInterpreterPath(cgi_paths[idx]);
-	if (_request.isValidPath())
-	{
-		if (!(_request.target_info.st_mode & S_IXUSR))
-			return buildErrorResponse(403);
-	}
-	else
-		return buildErrorResponse(_request.error_code);
+	std::string& content_type = it->second;
+	if (content_type.find("multipart/form-data") == std::string::npos)
+		return ;
+	size_t boundary_pos = content_type.find("boundary=");
+	if (boundary_pos == std::string::npos)
+		return ;
+	std::string boundary = content_type.substr(boundary_pos + 9);
+	_request.parseMultipart(boundary);
+	if (_request.uploads.size() == 0)
+		buildErrorResponse(400);
 }
 
-void	Client::handlePost(const Location& loc)
+/* --------------------------- Internal: Response --------------------------- */
+void	Client::buildAutoindex(const std::string& dirPath)
 {
-	if (_request.uploads.size() == 0)
-		buildUploadFromPath(loc);
-	if (_status == ERROR)
-		return ;
-	if (loc.getUploadPath().empty())
-		return buildErrorResponse(403);
-	else
-		_request.path = loc.getUploadPath();
-	if (_request.isValidPath())
+	DIR*	dir = opendir(dirPath.c_str());
+	if (!dir)
 	{
-		if (!S_ISDIR(_request.target_info.st_mode)) 
-			_request.error_code = 404;
-		if (!(_request.target_info.st_mode & S_IWUSR) 
-			|| !(_request.target_info.st_mode & S_IXUSR))
-				_request.error_code = 403;
+		buildErrorResponse(403);
+		return ;
 	}
-	if (_request.error_code != 0)
-		return buildErrorResponse(_request.error_code);
-	postContent();
-	_response.setCodeStatus(201);
-	_response.setStatusPhrase("Created");
-	_response.setBody("");
+	std::ostringstream	html;
+	html << "<html><head><title>Index of " << _request.path << "</title></head>"
+		 << "<body><h1>Index of " << _request.path << "</h1><hr><ul>";
+
+	struct dirent*	entry;
+	while ((entry = readdir(dir)) != NULL)
+	{
+		std::string name = entry->d_name;
+		if (name == ".")
+			continue ;
+		html << "<li><a href=\"" << _request.path << name << "\">" << name << "</a></li>";
+	}
+	closedir(dir);
+	html << "</ul><hr></body></html>";
+
+	_response.setCodeStatus(200);
+	_response.setStatusPhrase("OK");
+	_response.setBody(html.str());
 	_response.buildSuccess("text/html");
 	_status = WRITING;
 }
@@ -435,7 +207,7 @@ void	Client::postContent()
 {
 	for (size_t i = 0; i < _request.uploads.size(); i++)
 	{
-		std::string		fullPath = _request.path + '/' +  _request.uploads[i].filename;
+		std::string		fullPath = _request.path + '/' + _request.uploads[i].filename;
 		std::ofstream	file(fullPath.c_str());
 
 		if (!file.is_open())
@@ -445,9 +217,237 @@ void	Client::postContent()
 		tmp.s_addr = _client_addr;
 		std::cout << "[UPLOAD]: " << inet_ntoa(tmp) << ":" << ntohs(_client_port)
 				<< " | file: " << _request.uploads[i].filename
-				<< " | size: " << _request.uploads[i].content.size() << " bytes" 
+				<< " | size: " << _request.uploads[i].content.size() << " bytes"
 				<< std::endl;
 	}
+}
+
+/* ------------------------------- Lifecycle -------------------------------- */
+Client::Client(int fd, struct sockaddr_in& addr, ServerConfig& server)
+    : _client_socket(fd),
+      _client_addr(addr.sin_addr.s_addr),
+      _client_port(addr.sin_port),
+      _server(&server),
+      _request_buffer(),
+      _request(),
+      _content_length(0),
+      _chunked(false),
+      _status(READING_HEADER),
+      _bytes_sent(0),
+      _last_time_activity(time(NULL)),
+      _cgi(NULL)
+{
+}
+
+Client::~Client()
+{
+	close(_client_socket);
+	_client_socket = -1;
+	if (_cgi)
+	{
+		delete _cgi;
+		_cgi = NULL;
+	}
+}
+
+/* -------------------------------- Getters --------------------------------- */
+int					Client::getClientSocket() const		{ return (_client_socket); }
+in_port_t			Client::getClientPort() const		{ return (_client_port); }
+in_addr_t			Client::getClientAddr() const		{ return (_client_addr); }
+Client::Status		Client::getStatus() const			{ return (_status); }
+const HttpRequest&	Client::getRequest() const			{ return (_request); }
+const Response&		Client::getResponse() const			{ return (_response); }
+const std::string&	Client::getFullResponse() const		{ return (_response.getFullResponse()); }
+const ServerConfig*	Client::getClientServer() const		{ return (_server); }
+ssize_t				Client::getBytesSent() const		{ return (_bytes_sent); }
+time_t				Client::getLastTimeActivity() const	{ return (_last_time_activity); }
+const std::string&	Client::getLogMsg() const			{ return (_response.getLogMsg()); }
+CgiHandler*			Client::getCgi() const				{ return (_cgi); }
+
+/* -------------------------------- Setters --------------------------------- */
+void	Client::setStatus(Status status)				{ _status = status; }
+void	Client::setBytesSent(ssize_t n)					{ _bytes_sent = n; }
+void	Client::setLastTimeActivity(time_t time)		{ _last_time_activity = time; }
+void	Client::setLogMsg(const std::string& msg)		{ _response.setLogMsg(msg); }
+
+/* ---------------------------- Request Handling ---------------------------- */
+
+ssize_t	Client::receiveData()
+{
+	char	buffer[4096] = {0};
+	ssize_t	n = recv(_client_socket, buffer, sizeof(buffer), 0);
+
+	if (n > 0)
+	{
+		if (_status == READING_HEADER)
+		{
+			receiveHeader(std::string(buffer, n));
+			if (_status == READING_BODY)
+				receiveBody("");
+		}
+		else if (_status == READING_BODY)
+			receiveBody(std::string(buffer, n));
+	}
+	return (n);
+}
+
+/* -------------------------------- Response -------------------------------- */
+
+void	Client::buildErrorResponse(int code)
+{
+	_response.setCodeStatus(code);
+	_response.setStatusPhrase(getErrorPhrase(code));
+	_response.buildError(*_server);
+	_status = ERROR;
+	std::ostringstream	oss;
+	oss << "error with code: " << code << " " << getErrorPhrase(code);
+	setLogMsg(oss.str());
+}
+
+void	Client::buildCgiResponse(const std::string& body)
+{
+	_response.setCodeStatus(200);
+	_response.setStatusPhrase("OK");
+	_response.setBody(body);
+	_response.buildSuccess("text/html");
+	_status = WRITING;
+}
+
+void	Client::sendResponse()
+{
+	_status = WRITING;
+	size_t		responseSize = _response.getFullResponse().size();
+	size_t		bufferSize = responseSize - _bytes_sent;
+	const char*	buff = _response.getFullResponse().c_str() + _bytes_sent;
+	ssize_t		n = send(_client_socket, buff, bufferSize, 0);
+	if (n <= 0)
+	{
+		_status = ERROR;
+		return ;
+	}
+	if ((size_t)(_bytes_sent += n) >= responseSize)
+		_status = CLOSE;
+}
+
+/* ------------------------------ HTTP Methods ------------------------------ */
+void	Client::handleGet(const Location& loc)
+{
+	if (!loc.getReturn().empty())
+	{
+		_response.setCodeStatus(301);
+		_response.setStatusPhrase("Moved Permanently");
+		_response.buildRedirect(loc.getReturn());
+		_status = WRITING;
+		return ;
+	}
+
+	if (_request.isValidPath() && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
+		_request.path += '/';
+
+	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
+	{
+		std::string	index = loc.getIndex().empty() ? _server->getIndex() : loc.getIndex();
+		std::ifstream	test((_request.path + index).c_str());
+		if (test.is_open())
+			_request.path += index;
+		else if (loc.getAutoindex())
+		{
+			buildAutoindex(_request.path);
+			return ;
+		}
+		else
+		{
+			buildErrorResponse(403);
+			return ;
+		}
+	}
+
+	std::ifstream	file(_request.path.c_str(), std::ios::binary);
+	if (!file.is_open())
+	{
+		buildErrorResponse(404);
+		return ;
+	}
+	std::ostringstream	ss;
+	ss << file.rdbuf();
+
+	_response.setCodeStatus(200);
+	_response.setStatusPhrase("OK");
+	_response.setBody(ss.str());
+	_response.buildSuccess(getMimeType(_request.path));
+	_status = WRITING;
+}
+
+void	Client::handlePost(const Location& loc)
+{
+	if (_request.uploads.size() == 0)
+		buildUploadFromPath(loc);
+	if (_status == ERROR)
+		return ;
+	if (loc.getUploadPath().empty())
+		return buildErrorResponse(403);
+	else
+		_request.path = loc.getUploadPath();
+	if (_request.isValidPath())
+	{
+		if (!S_ISDIR(_request.target_info.st_mode))
+			_request.error_code = 404;
+		if (!(_request.target_info.st_mode & S_IWUSR)
+			|| !(_request.target_info.st_mode & S_IXUSR))
+				_request.error_code = 403;
+	}
+	if (_request.error_code != 0)
+		return buildErrorResponse(_request.error_code);
+	postContent();
+	_response.setCodeStatus(201);
+	_response.setStatusPhrase("Created");
+	_response.setBody("");
+	_response.buildSuccess("text/html");
+	_status = WRITING;
+}
+
+void	Client::handleDelete()
+{
+	struct stat	st;
+	if (stat(_request.path.c_str(), &st) == -1)
+	{
+		buildErrorResponse(404);
+		return ;
+	}
+	if (S_ISDIR(st.st_mode))
+	{
+		buildErrorResponse(403);
+		return ;
+	}
+	if (remove(_request.path.c_str()) != 0)
+	{
+		buildErrorResponse(403);
+		return ;
+	}
+	struct in_addr tmp;
+	tmp.s_addr = _client_addr;
+	std::cout << "[DELETE]: " << inet_ntoa(tmp) << ":" << ntohs(_client_port)
+			  << " | file: " << _request.line_request << std::endl;
+	_response.setCodeStatus(204);
+	_response.setStatusPhrase("No Content");
+	_response.buildSuccess("");
+	_status = WRITING;
+}
+
+void	Client::handleCGI(const Location& loc)
+{
+	_cgi = new CgiHandler(_request, *this);
+	_cgi->extractCgiInfo(loc.getPath());
+	if (_request.error_code != 0)
+		return ;
+	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
+	const std::vector<std::string>&	cgi_paths = loc.getCgiPath();
+	size_t	idx = std::find(cgi_exts.begin(), cgi_exts.end(), _cgi->getExt()) - cgi_exts.begin();
+	if (idx >= cgi_exts.size())
+		return buildErrorResponse(403);
+	_cgi->setInterpreterPath(cgi_paths[idx]);
+	if (!_request.isValidPath())
+		return buildErrorResponse(_request.error_code);
 }
 
 void	Client::validateAndReplacePath(const Location& loc)

@@ -1,13 +1,75 @@
 #include "../../include/CgiHandler.hpp"
 #include "../../include/Client.hpp"
-#include "../../include/utils.hpp"
 #include <stdexcept>
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstdlib>
-#include <iostream>
 #include <sys/wait.h>
-#include <cstdio>
+
+/* ----------------------------- Internal: Setup ---------------------------- */
+void	CgiHandler::setEnv()
+{
+	if (!_path_info.empty())
+		_envTmp.push_back("PATH_INFO=" + _path_info);
+	if (!_request.query_string.empty())
+		_envTmp.push_back("QUERY_STRING=" + _request.query_string);
+	_envTmp.push_back("REQUEST_METHOD=" + _request.method);
+	_envTmp.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	_envTmp.push_back("SERVER_PROTOCOL=HTTP/1.1");
+	_envTmp.push_back("SCRIPT_NAME=" + _script_path);
+	_envTmp.push_back("SERVER_NAME=" + _client.getClientServer()->getServerName());
+	_envTmp.push_back("REDIRECT_STATUS=200");
+	if (_request.method == "POST")
+	{
+		if (_request.headers.count("content-type"))
+			_envTmp.push_back("CONTENT_TYPE=" + _request.headers["content-type"]);
+		if (_request.headers.count("content-length"))
+			_envTmp.push_back("CONTENT_LENGTH=" + _request.headers["content-length"]);
+	}
+	for (size_t i = 0; i < _envTmp.size(); i++)
+		_env.push_back(_envTmp[i].c_str());
+	_env.push_back(NULL);
+}
+
+void	CgiHandler::setupPipe()
+{
+	if (pipe(_pipe_body) < 0)
+		throw std::runtime_error("pipe body failed");
+	if (pipe(_pipe_output) < 0)
+	{
+		closeAllOpenPipeFds();
+		throw std::runtime_error("pipe output failed");
+	}
+}
+
+void	CgiHandler::setupChild(char** argv)
+{
+	_pid = fork();
+	if (_pid < 0)
+	{
+		closeAllOpenPipeFds();
+		throw std::runtime_error("fork failed");
+	}
+	if (_pid == 0)
+	{
+		dup2(_pipe_body[0], STDIN_FILENO);
+		dup2(_pipe_output[1], STDOUT_FILENO);
+		closeAllFds();
+		if (execve(argv[0], argv, const_cast<char* const *>(_env.data())) < 0)
+		{
+			_envTmp.clear();
+			_env.clear();
+		}
+		exit(1);
+	}
+}
+
+void	CgiHandler::closeAllFds()
+{
+	int max_fd = sysconf(_SC_OPEN_MAX);
+	for (int fd = 3; fd < max_fd; fd++)
+		close(fd);
+}
 
 /* -------------------------------- Lifecycle ------------------------------- */
 CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
@@ -26,10 +88,6 @@ CgiHandler::CgiHandler(HttpRequest& request,  Client& client)
 
 CgiHandler::~CgiHandler() {}
 
-/* --------------------------------- Setters -------------------------------- */
-void	CgiHandler::setStatus(Status status)				{ _status = status; }
-void	CgiHandler::setInterpreterPath(const std::string& path) { _interpreter_path = path; }
-
 /* --------------------------------- Getters -------------------------------- */
 const std::string&	CgiHandler::getExt() const			{ return (_ext); }
 const std::string&	CgiHandler::getFilename() const		{ return (_filename); }
@@ -41,6 +99,10 @@ time_t				CgiHandler::getStartTime() const	{ return (_start_time); }
 const int*			CgiHandler::getPipeBody() const			{ return (_pipe_body); }
 const int*			CgiHandler::getPipeOutput() const		{ return (_pipe_output); }
 CgiHandler::Status		CgiHandler::getStatus() const		{ return (_status); }
+
+/* --------------------------------- Setters -------------------------------- */
+void	CgiHandler::setStatus(Status status)				{ _status = status; }
+void	CgiHandler::setInterpreterPath(const std::string& path) { _interpreter_path = path; }
 
 /* ------------------------------- CGI Parsing ------------------------------ */
 void	CgiHandler::extractCgiInfo(const std::string& loc)
@@ -106,6 +168,10 @@ void	CgiHandler::sendBody(const std::string& body)
 	const char*	buffer = body.c_str() + _body_bytes_sent;
 	size_t	buf_len = body.size() - _body_bytes_sent;
 	int bytes = write(_pipe_body[1], buffer, buf_len);
+	if (bytes == 0)
+		return ;
+	if (bytes < 0)
+		{ _status = ERROR; return; }
 	if (bytes > 0)
 	{
 		_body_bytes_sent += bytes;
@@ -160,69 +226,4 @@ void	CgiHandler::closePipeFd(int fd)
 		{ close(_pipe_output[1]); _pipe_output[1] = -1; }
 	else if (fd == _pipe_output[0] && _pipe_output[0] != -1)
 		{ close(_pipe_output[0]); _pipe_output[0] = -1; };
-}
-
-/* ----------------------- CGI Setup (private methods) ---------------------- */
-void	CgiHandler::setupPipe()
-{
-	if (pipe(_pipe_body) < 0)
-		throw std::runtime_error("pipe body failed");
-	if (pipe(_pipe_output) < 0)
-	{
-		closeAllOpenPipeFds();
-		throw std::runtime_error("pipe output failed");
-	}
-}
-
-void	CgiHandler::setEnv()
-{
-	if (!_path_info.empty())
-		_envTmp.push_back("PATH_INFO=" + _path_info);
-	if (!_request.query_string.empty())
-		_envTmp.push_back("QUERY_STRING=" + _request.query_string);
-	_envTmp.push_back("REQUEST_METHOD=" + _request.method);
-	_envTmp.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	_envTmp.push_back("SERVER_PROTOCOL=HTTP/1.1");
-	_envTmp.push_back("SCRIPT_NAME=" + _script_path);
-	_envTmp.push_back("SERVER_NAME=" + _client.getClientServer()->getServerName());
-	_envTmp.push_back("REDIRECT_STATUS=200");
-	if (_request.method == "POST")
-	{
-		if (_request.headers.count("content-type"))
-			_envTmp.push_back("CONTENT_TYPE=" + _request.headers["content-type"]);
-		if (_request.headers.count("content-length"))
-			_envTmp.push_back("CONTENT_LENGTH=" + _request.headers["content-length"]);
-	}
-	for (size_t i = 0; i < _envTmp.size(); i++)
-		_env.push_back(_envTmp[i].c_str());
-	_env.push_back(NULL);
-}
-
-void	CgiHandler::setupChild(char** argv)
-{
-	_pid = fork();
-	if (_pid < 0)
-	{
-		closeAllOpenPipeFds();
-		throw std::runtime_error("fork failed");
-	}
-	if (_pid == 0)
-	{
-		dup2(_pipe_body[0], STDIN_FILENO);
-		dup2(_pipe_output[1], STDOUT_FILENO);
-		closeAllFds();
-		if (execve(argv[0], argv, const_cast<char* const *>(_env.data())) < 0)
-		{
-			_envTmp.clear();
-			_env.clear();
-		}
-		exit(1);
-	}
-}
-
-void	CgiHandler::closeAllFds()
-{
-	int max_fd = sysconf(_SC_OPEN_MAX);
-	for (int fd = 3; fd < max_fd; fd++)
-		close(fd);
 }

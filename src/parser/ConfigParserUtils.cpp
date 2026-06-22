@@ -1,5 +1,7 @@
 #include "../../include/ConfigParser.hpp"
 
+/* --------------------------------- Utils ---------------------------------- */
+
 std::string ConfigParser::removeComments(const std::string &line)
 {
     size_t pos = line.find('#');

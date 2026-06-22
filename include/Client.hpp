@@ -1,15 +1,13 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 
-#include <netinet/in.h>
-#include <string>
-#include <map>
-#include <vector>
-#include <ctime>
-#include "ServerConfig.hpp"
-#include "Response.hpp"
 #include "HttpRequest.hpp"
 #include "CgiHandler.hpp"
+#include "Response.hpp"
+#include "ServerConfig.hpp"
+#include <netinet/in.h>
+#include <string>
+#include <ctime>
 
 // Not copyable: each instance owns a unique TCP socket fd that must not be duplicated.
 class Client
@@ -24,9 +22,9 @@ public:
 		ERROR,
 		CLOSE
 	};
-	
+
 private:
-// Attributes
+// --- Attributes ---
 	int				_client_socket;
 	in_addr_t		_client_addr;
 	in_port_t		_client_port;
@@ -40,26 +38,32 @@ private:
 	ssize_t			_bytes_sent;
 	time_t			_last_time_activity;
 	CgiHandler*		_cgi;
-// Non-copyable (owns a unique socket fd)
+
+// --- Non-copyable ---
 	Client(const Client& other);
 	Client&	operator=(const Client& other);
-// Request Handling
+
+// --- Internal: Request ---
 	void				receiveHeader(const std::string& request);
 	void				receiveBody(const std::string& request);
 	bool				hasCompleteBody();
 	void				parseMultipartIfNeeded();
-	// Response
+
+// --- Internal: Response ---
 	void				buildAutoindex(const std::string& dirPath);
 	void				buildUploadFromPath(const Location& loc);
 	void				postContent();
 
 public:
-// Constants
+// --- Constants ---
 	static const int	MAX_HEADER_SIZE = 8192;
-// Lifecycle
+	static const int	MAX_URI_SIZE = 4096;
+
+// --- Lifecycle ---
 	Client(int fd, struct sockaddr_in& addr, ServerConfig& server);
 	~Client();
-// Getters
+
+// --- Getters ---
 	int					getClientSocket() const;
 	in_port_t			getClientPort() const;
 	in_addr_t			getClientAddr() const;
@@ -72,22 +76,27 @@ public:
 	ssize_t				getBytesSent() const;
 	time_t				getLastTimeActivity() const;
 	const std::string&	getLogMsg() const;
-// Setters
+
+// --- Setters ---
 	void				setStatus(Status status);
 	void				setBytesSent(ssize_t n);
 	void				setLastTimeActivity(time_t time);
 	void				setLogMsg(const std::string& msg);
-// Response
+
+// --- Request Handling ---
+	ssize_t				receiveData();
+
+// --- Response ---
 	void				buildErrorResponse(int code);
 	void				buildCgiResponse(const std::string& body);
+	void				sendResponse();
+
+// --- HTTP Methods ---
 	void				handleGet(const Location& loc);
 	void				handlePost(const Location& loc);
-	void				handleCGI(const Location& loc);
 	void				handleDelete();
-	void				sendResponse();
+	void				handleCGI(const Location& loc);
 	void				validateAndReplacePath(const Location& loc);
-// Request Handling
-	ssize_t				receiveData();
 };
 
 #endif

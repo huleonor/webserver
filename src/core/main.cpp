@@ -9,6 +9,7 @@ int main(int argc, char **argv)
 	{
 		signal(SIGINT, ServerManager::handleSignal);
 		signal(SIGTERM, ServerManager::handleSignal);
+		signal(SIGPIPE, SIG_IGN);
 		try
 		{
 			ServerManager	manager;

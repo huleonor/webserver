@@ -3,59 +3,69 @@
 
 #include "ServerConfig.hpp"
 #include "Client.hpp"
+#include <poll.h>
 #include <vector>
 #include <map>
-#include <poll.h>
 
 class ServerManager
 {
 public:
-// Types
+// --- Types ---
 	typedef std::map<int, Client*>::iterator	client_it;
+
 private:
-// Attributes
+// --- Attributes ---
 	std::map<int, Client*>		_clients;
 	std::map<int, Client*>		_cgi_pipes;
 	std::vector<struct pollfd>	_pfds;
 	std::vector<ServerConfig>	_servers;
 	static bool					_running;
-// Non-copyable (single runtime manager)
+
+// --- Non-copyable ---
 	ServerManager(const ServerManager&);
 	ServerManager& operator=(const ServerManager&);
-// Client Management
+
+// --- Internal: Client ---
 	void	acceptNewClient(size_t pfds_pos);
 	void	handleClientRequest(size_t& pfds_pos);
 	void	handleClientResponse(size_t& pfds_pos);
 	void	processClientRequest(Client& client);
 	void	closeConnection(size_t& pfds_pos);
-// CGI Management
+	void	handleClientPollCleanUp(size_t& pfds_pos);
+
+// --- Internal: CGI ---
 	void	handleCgiProcess(size_t& pfds_pos);
 	void	sendCgiBody(size_t& pfds_pos);
 	void	processCgiOutput(Client* client, CgiHandler* cgi, size_t& pfds_pos);
 	void	closeFdAndCleanMaps(CgiHandler* cgi, size_t& pfds_pos, bool closeFds);
-	void	processCgiClientResponse(Client* client, int code);
+	void	processCgiClientResponse(Client* client, int code, const std::string body);
 	void	handleCgiPollCleanUp(size_t& pfds_pos, const std::string& logMsg);
-// Error handling
-	void	handleInitOrAcceptError(int fd, const std::string& msg);
-// Runtime
-	void	handleClientPollCleanUp(size_t& pfds_pos);
+
+// --- Internal: Runtime ---
 	void	handleEvent();
-	bool	isServerSocket(size_t pos);
 	void	monitorClients();
+	bool	isServerSocket(size_t pos);
+
+// --- Internal: Error ---
+	void	handleInitOrAcceptError(int fd, const std::string& msg);
 
 public:
-// Lifecycle
+// --- Lifecycle ---
 	ServerManager();
 	~ServerManager();
-// Getters
+
+// --- Getters ---
 	std::vector<ServerConfig>&	getServers();
 	size_t						size();
-// Setup
+
+// --- Setup ---
 	void	addServer(const ServerConfig& server);
 	void	setupServers();
-// Runtime
+
+// --- Runtime ---
 	void	start();
-// Signal handling
+
+// --- Signal ---
 	static void	handleSignal(int sig);
 };
 

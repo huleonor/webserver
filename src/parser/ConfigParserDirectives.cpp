@@ -1,5 +1,7 @@
 #include "../../include/ConfigParser.hpp"
 
+/* ------------------------------- Directives ------------------------------- */
+
 void ConfigParser::parseListenDirective(const std::string &line, ServerConfig &config)
 {
     std::string value = extractValue(line);

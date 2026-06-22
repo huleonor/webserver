@@ -1,6 +1,7 @@
 #include "../../include/Location.hpp"
 #include <algorithm>
 
+/* ------------------------------- Lifecycle -------------------------------- */
 Location::Location() : _autoindex(false) {}
 
 Location::Location(const Location& other)
@@ -33,6 +34,7 @@ Location& Location::operator=(const Location& other)
 
 Location::~Location() {}
 
+/* -------------------------------- Getters --------------------------------- */
 const std::string&              Location::getPath() const         { return _path; }
 const std::string&              Location::getRoot() const         { return _root; }
 const std::string&              Location::getIndex() const        { return _index; }
@@ -43,6 +45,7 @@ const std::vector<std::string>& Location::getCgiExt() const      { return _cgi_e
 const std::vector<std::string>& Location::getCgiPath() const     { return _cgi_path; }
 const std::string&              Location::getUploadPath() const   { return _upload_path; }
 
+/* -------------------------------- Setters --------------------------------- */
 void Location::setPath(const std::string &path)       { _path = path; }
 void Location::setRoot(const std::string &root)       { _root = root; }
 void Location::setIndex(const std::string &index)     { _index = index; }
@@ -53,8 +56,26 @@ void Location::addCgiExt(const std::string &ext)      { _cgi_ext.push_back(ext);
 void Location::addCgiPath(const std::string &path)    { _cgi_path.push_back(path); }
 void Location::setUploadPath(const std::string &path) { _upload_path = path; }
 
-/* ------------------------------- Validations ------------------------------ */
+/* ------------------------------ Validations ------------------------------- */
 bool Location::isValidMethod(const std::string& method) const
 {
 	return (std::find(_allow_methods.begin(), _allow_methods.end(), method) != _allow_methods.end());
+}
+
+bool Location::findFileExtension(const std::string& path, const std::string& loc) const
+{
+	std::vector<std::string>::const_iterator it;
+	size_t root = path.find(loc);
+	if (root != std::string::npos)
+	{
+		size_t dot = path.find(".", root);
+		if (dot == std::string::npos)
+			return (false);
+		size_t slash = path.rfind('/');
+		if (slash != std::string::npos && slash > dot)
+			return (false);
+		std::string ext = path.substr(dot);
+		it = std::find(_cgi_ext.begin(), _cgi_ext.end(), ext);
+	}
+	return (it != _cgi_ext.end());
 }

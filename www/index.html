@@ -120,6 +120,21 @@
 
         .btn-delete:hover { background: #96281b; }
         .btn-delete:disabled { background: #3a3a5a; cursor: not-allowed; }
+
+        .btn-download {
+            background: #1a7a4a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.7rem 1.5rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: background 0.2s;
+        }
+
+        .btn-download:hover { background: #145c38; }
+        .btn-download:disabled { background: #3a3a5a; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -162,6 +177,14 @@
                     <input class="text-input" type="text" id="deleteInput" placeholder="filename (e.g. photo.png)">
                     <button type="submit" class="btn-delete" id="deleteBtn" disabled>Delete (DELETE)</button>
                     <div class="upload-msg" id="deleteMsg"></div>
+                </form>
+            </div>
+            <div class="card">
+                <h2>Download File</h2>
+                <form class="delete-form" id="downloadForm">
+                    <input class="text-input" type="text" id="downloadInput" placeholder="filename (e.g. photo.png)">
+                    <button type="submit" class="btn-download" id="downloadBtn" disabled>Download (GET)</button>
+                    <div class="upload-msg" id="downloadMsg"></div>
                 </form>
             </div>
         </main>
@@ -228,6 +251,33 @@
                 deleteMsg.className = 'upload-msg err';
             }
             deleteBtn.disabled = false;
+        });
+
+        const downloadInput = document.getElementById('downloadInput');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const downloadMsg = document.getElementById('downloadMsg');
+        const downloadForm = document.getElementById('downloadForm');
+
+        downloadInput.addEventListener('input', () => {
+            downloadBtn.disabled = downloadInput.value.trim() === '';
+            downloadMsg.textContent = '';
+            downloadMsg.className = 'upload-msg';
+        });
+
+        downloadForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const filename = downloadInput.value.trim();
+            if (!filename) return;
+            downloadMsg.textContent = '';
+            downloadMsg.className = 'upload-msg';
+            const a = document.createElement('a');
+            a.href = 'uploads/' + encodeURIComponent(filename);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            downloadMsg.textContent = 'Download started: ' + filename;
+            downloadMsg.className = 'upload-msg ok';
         });
 
         uploadForm.addEventListener('submit', async e => {

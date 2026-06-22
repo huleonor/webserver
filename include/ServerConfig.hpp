@@ -1,11 +1,11 @@
 #ifndef SERVER_CONFIG_HPP
 #define SERVER_CONFIG_HPP
 
+#include "Location.hpp"
 #include <stdint.h>
 #include <string>
 #include <map>
 #include <vector>
-#include "Location.hpp"
 
 class ServerConfig
 {

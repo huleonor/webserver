@@ -1,7 +1,6 @@
 #include "../../include/ConfigParser.hpp"
 
-ConfigParser::ConfigParser() {}
-ConfigParser::~ConfigParser() {}
+/* ------------------------------ Internal ---------------------------------- */
 
 std::string ConfigParser::readFile(const std::string &filepath)
 {
@@ -19,6 +18,13 @@ std::string ConfigParser::readFile(const std::string &filepath)
 
     return buffer.str();
 }
+
+/* ------------------------------- Lifecycle -------------------------------- */
+
+ConfigParser::ConfigParser() {}
+ConfigParser::~ConfigParser() {}
+
+/* -------------------------------- Parsing --------------------------------- */
 
 void ConfigParser::parse(int argc, char **argv, ServerManager &manager)
 {

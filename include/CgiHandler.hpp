@@ -1,12 +1,12 @@
 #ifndef CGI_HANDLER
 # define CGI_HANDLER
 
+#include "HttpRequest.hpp"
+#include <unistd.h>
+#include <poll.h>
 #include <string>
 #include <vector>
 #include <ctime>
-#include <unistd.h>
-#include <poll.h>
-#include "HttpRequest.hpp"
 
 class Client;
 
@@ -20,7 +20,7 @@ public:
 		ERROR
 	};
 private:
-// Attributes
+// --- Attributes ---
 	Status						_status;
 	int							_pipe_body[2];
 	int							_pipe_output[2];
@@ -38,21 +38,22 @@ private:
 	std::vector<std::string>	_envTmp;
 	std::vector<const char*>	_env;
 
-// Non-copyable (owns a unique socket fd)
+// --- Non-copyable ---
 	CgiHandler(const CgiHandler& other);
 	CgiHandler&	operator=(const CgiHandler& other);
-// CGI Setup (private methods)
+
+// --- Internal: Setup ---
 	void	setEnv();
 	void	setupPipe();
 	void	setupChild(char** argv);
 	void	closeAllFds();
 
 public:
-// Lifecycle
+// --- Lifecycle ---
 	CgiHandler(HttpRequest& request, Client& client);
 	~CgiHandler();
 
-// Getters
+// --- Getters ---
 	const std::string&	getExt() const;
 	const std::string&	getFilename() const;
 	const std::string&	getScriptName() const;
@@ -64,22 +65,22 @@ public:
 	const int*			getPipeOutput() const;
 	Status				getStatus() const;
 
-// Setters
+// --- Setters ---
 	void				setStatus(Status status);
+	void				setInterpreterPath(const std::string& path);
 
-// Setters
-	void	setInterpreterPath(const std::string& path);
+// --- CGI Parsing ---
+	void	extractCgiInfo(const std::string& loc);
 
-// CGI Process
+// --- CGI Setup ---
+	struct pollfd	cgiSetup();
+
+// --- CGI Process ---
 	void	receiveCgiOutput(const std::string& buffer);
 	void	sendBody(const std::string& body);
 	int		checkWaitpid();
 	void	closeAllOpenPipeFds();
 	void	closePipeFd(int fd);
-
-// CGI Parsing
-	void	extractCgiInfo(const std::string& loc);
-	struct pollfd	cgiSetup();
 };
 
 
