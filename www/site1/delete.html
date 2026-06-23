@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete File</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Delete</h1>
+            <p class="subtitle"><a href="/">← Back</a></p>
+        </header>
+        <main>
+            <div class="card">
+                <h2>Delete File</h2>
+                <form class="delete-form" id="deleteForm">
+                    <input class="text-input" type="text" id="deleteInput" placeholder="filename (e.g. photo.png)">
+                    <button type="submit" class="btn-delete" id="deleteBtn" disabled>Delete (DELETE)</button>
+                    <div class="upload-msg" id="deleteMsg"></div>
+                </form>
+            </div>
+        </main>
+    </div>
+    <script>
+        const deleteInput = document.getElementById('deleteInput');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const deleteMsg = document.getElementById('deleteMsg');
+
+        deleteInput.addEventListener('input', () => {
+            deleteBtn.disabled = deleteInput.value.trim() === '';
+            deleteMsg.textContent = '';
+            deleteMsg.className = 'upload-msg';
+        });
+
+        document.getElementById('deleteForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const filename = deleteInput.value.trim();
+            if (!filename) return;
+            deleteBtn.disabled = true;
+            deleteMsg.textContent = 'Deleting...';
+            deleteMsg.className = 'upload-msg';
+            try {
+                const res = await fetch('upload/' + filename, { method: 'DELETE' });
+                if (res.ok) {
+                    deleteMsg.textContent = filename + ' deleted.';
+                    deleteMsg.className = 'upload-msg ok';
+                    deleteInput.value = '';
+                } else {
+                    deleteMsg.textContent = 'Error: ' + res.status + ' ' + res.statusText;
+                    deleteMsg.className = 'upload-msg err';
+                }
+            } catch {
+                deleteMsg.textContent = 'Connection error.';
+                deleteMsg.className = 'upload-msg err';
+            }
+            deleteBtn.disabled = false;
+        });
+    </script>
+</body>
+</html>

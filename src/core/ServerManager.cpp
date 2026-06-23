@@ -130,6 +130,23 @@ void	ServerManager::closeConnection(size_t& pfds_pos)
 	std::string		addr = toAddrStr(it->second->getClientAddr());
 	int				port = ntohs(it->second->getClientPort());
 	const std::string	msg = it->second->getLogMsg().empty() ? "closed by client" : it->second->getLogMsg();
+	CgiHandler*		cgi = it->second->getCgi();
+	if (cgi && cgi->getPid() > 0)
+	{
+		kill(cgi->getPid(), SIGKILL);
+		cgi->checkWaitpid();
+		for (size_t j = 0; j < _pfds.size(); j++)
+		{
+			if (_cgi_pipes.count(_pfds[j].fd) && _cgi_pipes[_pfds[j].fd] == it->second)
+			{
+				cgi->closeAllOpenPipeFds();
+				_cgi_pipes.erase(_pfds[j].fd);
+				_pfds.erase(_pfds.begin() + j);
+				if (j < pfds_pos) pfds_pos--;
+				break;
+			}
+		}
+	}
 	delete it->second;
 	_clients.erase(_pfds[pfds_pos].fd);
 	_pfds.erase(_pfds.begin() + pfds_pos);
@@ -263,6 +280,7 @@ void	ServerManager::handleEvent()
 				handleClientRequest(i);
 			else
 				handleCgiProcess(i);
+			continue;
 		}
 		if ((_pfds[i].events & POLLOUT) && (_pfds[i].revents & (POLLOUT | POLLHUP | POLLERR)))
 		{
@@ -294,6 +312,18 @@ void	ServerManager::monitorClients()
 		if (cgi && cgi->getPid() > 0 && time(NULL) - cgi->getStartTime() >= 10)
 		{
 			kill(cgi->getPid(), SIGKILL);
+			cgi->checkWaitpid();
+			for (size_t j = 0; j < _pfds.size(); j++) 
+			{
+        		if (_cgi_pipes.count(_pfds[j].fd) && _cgi_pipes[_pfds[j].fd] == c) 
+				{
+        		    cgi->closeAllOpenPipeFds();
+        		    _cgi_pipes.erase(_pfds[j].fd);
+        		    _pfds.erase(_pfds.begin() + j);
+        		    if (j < i) i--;
+        		    break;
+        		}
+    		}
 			c->setLogMsg("CGI timeout");
 			c->buildErrorResponse(504);
 			_pfds[i].events = POLLOUT;

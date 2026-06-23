@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download File</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Download</h1>
+            <p class="subtitle"><a href="/">← Back</a></p>
+        </header>
+        <main>
+            <div class="card">
+                <h2>Download File</h2>
+                <form class="delete-form" id="downloadForm">
+                    <input class="text-input" type="text" id="downloadInput" placeholder="filename (e.g. photo.png)">
+                    <button type="submit" class="btn-download" id="downloadBtn" disabled>Download (GET)</button>
+                    <div class="upload-msg" id="downloadMsg"></div>
+                </form>
+            </div>
+        </main>
+    </div>
+    <script>
+        const downloadInput = document.getElementById('downloadInput');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const downloadMsg = document.getElementById('downloadMsg');
+
+        downloadInput.addEventListener('input', () => {
+            downloadBtn.disabled = downloadInput.value.trim() === '';
+            downloadMsg.textContent = '';
+            downloadMsg.className = 'upload-msg';
+        });
+
+        document.getElementById('downloadForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const filename = downloadInput.value.trim();
+            if (!filename) return;
+            downloadMsg.textContent = '';
+            downloadMsg.className = 'upload-msg';
+            const a = document.createElement('a');
+            a.href = 'upload/' + encodeURIComponent(filename);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            downloadMsg.textContent = 'Download started: ' + filename;
+            downloadMsg.className = 'upload-msg ok';
+        });
+    </script>
+</body>
+</html>

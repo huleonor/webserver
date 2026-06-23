@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload File</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Upload</h1>
+            <p class="subtitle"><a href="/">← Back</a></p>
+        </header>
+        <main>
+            <div class="card">
+                <h2>Upload File</h2>
+                <form class="upload-form" id="uploadForm">
+                    <label class="file-drop" id="dropZone">
+                        <input type="file" id="fileInput">
+                        <span id="dropText">Click or drag a file here</span>
+                        <div class="file-name" id="fileName"></div>
+                    </label>
+                    <button type="submit" class="btn" id="uploadBtn" disabled>Send (POST)</button>
+                    <div class="upload-msg" id="uploadMsg"></div>
+                </form>
+            </div>
+        </main>
+    </div>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileName = document.getElementById('fileName');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadMsg = document.getElementById('uploadMsg');
+
+        function setFile(file) {
+            fileName.textContent = file ? file.name : '';
+            uploadBtn.disabled = !file;
+            uploadMsg.textContent = '';
+            uploadMsg.className = 'upload-msg';
+        }
+
+        fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) { fileInput.files = e.dataTransfer.files; setFile(file); }
+        });
+
+        document.getElementById('uploadForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const file = fileInput.files[0];
+            if (!file) return;
+            uploadBtn.disabled = true;
+            uploadMsg.textContent = 'Sending...';
+            uploadMsg.className = 'upload-msg';
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                if (res.ok) {
+                    uploadMsg.textContent = 'File sent successfully!';
+                    uploadMsg.className = 'upload-msg ok';
+                    fileInput.value = '';
+                    setFile(null);
+                } else {
+                    uploadMsg.textContent = 'Error: ' + res.status + ' ' + res.statusText;
+                    uploadMsg.className = 'upload-msg err';
+                }
+            } catch {
+                uploadMsg.textContent = 'Connection error.';
+                uploadMsg.className = 'upload-msg err';
+            }
+            uploadBtn.disabled = false;
+        });
+    </script>
+</body>
+</html>

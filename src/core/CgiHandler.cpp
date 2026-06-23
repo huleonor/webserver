@@ -229,7 +229,7 @@ void	CgiHandler::closePipeFd(int fd)
 		{ close(_pipe_body[1]); _pipe_body[1] = -1; }
 	else if (fd == _pipe_body[0] && _pipe_body[0] != -1)
 		{ close(_pipe_body[0]); _pipe_body[0] = -1; }
-	else if (fd == _pipe_output[1] && _pipe_output[0] != -1)
+	else if (fd == _pipe_output[1] && _pipe_output[1] != -1)
 		{ close(_pipe_output[1]); _pipe_output[1] = -1; }
 	else if (fd == _pipe_output[0] && _pipe_output[0] != -1)
 		{ close(_pipe_output[0]); _pipe_output[0] = -1; };
