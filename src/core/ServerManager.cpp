@@ -283,12 +283,11 @@ void	ServerManager::monitorClients()
 		if (it == _clients.end())
 			continue;
 		Client* c = it->second;
-		if (c->getStatus() != Client::READING_HEADER && c->getStatus() != Client::READING_BODY)
-			continue;
-		if (time(NULL) - it->second->getLastTimeActivity() >= 60)
+		if ((c->getStatus() == Client::READING_HEADER || c->getStatus() == Client::READING_BODY)
+			&& time(NULL) - c->getLastTimeActivity() >= 60)
 		{
-			it->second->setLogMsg("timeout");
-			it->second->buildErrorResponse(408);
+			c->setLogMsg("timeout");
+			c->buildErrorResponse(408);
 			_pfds[i].events = POLLOUT;
 		}
 		CgiHandler* cgi = c->getCgi();
