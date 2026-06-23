@@ -17,6 +17,7 @@ private:
 	std::string	_body;
 	std::string	_full_response;
 	std::string	_log_close_msg;
+	std::string	_upload_location;
 
 // --- Internal ---
 	void				generateDefaultErrorPage();
@@ -44,6 +45,7 @@ public:
 	void				setStatusPhrase(const std::string& phrase);
 	void				setBody(const std::string& body);
 	void				setLogMsg(const std::string& msg);
+	void				setUploadLocation(const std::string& loc, const std::string& file);
 
 // --- Build ---
 	void				buildSuccess(const std::string& mimeType);

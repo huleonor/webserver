@@ -45,7 +45,7 @@ private:
 // --- Internal: Setup ---
 	void	setEnv();
 	void	setupPipe();
-	void	setupChild(char** argv);
+	void	setupChild();
 	void	closeAllFds();
 
 public:

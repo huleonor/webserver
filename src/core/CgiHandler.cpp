@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <sys/wait.h>
 
+#include <iostream>
+
 /* ----------------------------- Internal: Setup ---------------------------- */
 void	CgiHandler::setEnv()
 {
@@ -42,7 +44,7 @@ void	CgiHandler::setupPipe()
 	}
 }
 
-void	CgiHandler::setupChild(char** argv)
+void	CgiHandler::setupChild()
 {
 	_pid = fork();
 	if (_pid < 0)
@@ -52,14 +54,20 @@ void	CgiHandler::setupChild(char** argv)
 	}
 	if (_pid == 0)
 	{
+		std::string dir = ".";
+		std::string filename = _script_path;
+		size_t slash = _script_path.rfind('/');
+		if (slash != std::string::npos)
+		{
+			dir = _script_path.substr(0, slash);
+			filename = _script_path.substr(slash + 1);
+		}
 		dup2(_pipe_body[0], STDIN_FILENO);
 		dup2(_pipe_output[1], STDOUT_FILENO);
 		closeAllFds();
-		if (execve(argv[0], argv, const_cast<char* const *>(_env.data())) < 0)
-		{
-			_envTmp.clear();
-			_env.clear();
-		}
+		chdir(dir.c_str());
+		char* new_argv[3] = {(char*)_interpreter_path.c_str(), (char*)filename.c_str(), NULL};
+		execve(new_argv[0], new_argv, const_cast<char* const *>(_env.data()));
 		exit(1);
 	}
 }
@@ -139,8 +147,7 @@ struct pollfd CgiHandler::cgiSetup()
 	if (fcntl(_pipe_body[1], F_SETFL, O_NONBLOCK) == -1 || fcntl(_pipe_output[0], F_SETFL, O_NONBLOCK) == -1)
 		throw std::runtime_error("fcntl in cgi failed");
 	setEnv();
-	char* argv[3] = {(char*)_interpreter_path.c_str(), (char*)_script_path.c_str(), NULL};
-	setupChild(argv);
+	setupChild();
 	close(_pipe_body[0]); _pipe_body[0] = -1;
 	close(_pipe_output[1]);  _pipe_output[1] = -1;
 	_envTmp.clear();

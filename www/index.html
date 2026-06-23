@@ -135,6 +135,27 @@
 
         .btn-download:hover { background: #145c38; }
         .btn-download:disabled { background: #3a3a5a; cursor: not-allowed; }
+
+        .multipart-form { display: flex; flex-direction: column; gap: 1rem; }
+
+        .field-row { display: flex; flex-direction: column; gap: 0.3rem; }
+
+        .field-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+
+        .raw-response {
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #aaa;
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 3em;
+            max-height: 10em;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -177,6 +198,33 @@
                     <input class="text-input" type="text" id="deleteInput" placeholder="filename (e.g. photo.png)">
                     <button type="submit" class="btn-delete" id="deleteBtn" disabled>Delete (DELETE)</button>
                     <div class="upload-msg" id="deleteMsg"></div>
+                </form>
+            </div>
+            <div class="card">
+                <h2>Multipart Form Test</h2>
+                <form class="multipart-form" id="multipartForm">
+                    <div class="field-row">
+                        <span class="field-label">Name</span>
+                        <input class="text-input" type="text" id="mpName" placeholder="e.g. John">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Message</span>
+                        <input class="text-input" type="text" id="mpMessage" placeholder="e.g. Hello world">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">File (optional)</span>
+                        <label class="file-drop" id="mpDropZone" style="padding:1rem;">
+                            <input type="file" id="mpFileInput">
+                            <span id="mpDropText">Click or drag a file</span>
+                            <div class="file-name" id="mpFileName"></div>
+                        </label>
+                    </div>
+                    <button type="submit" class="btn" id="mpBtn">Send Multipart (POST)</button>
+                    <div class="upload-msg" id="mpMsg"></div>
+                    <div class="field-row" id="mpResponseRow" style="display:none;">
+                        <span class="field-label">Server Response</span>
+                        <div class="raw-response" id="mpResponse"></div>
+                    </div>
                 </form>
             </div>
             <div class="card">
@@ -237,7 +285,7 @@
             deleteMsg.textContent = 'Deleting...';
             deleteMsg.className = 'upload-msg';
             try {
-                const res = await fetch('uploads/' + filename, { method: 'DELETE' });
+                const res = await fetch('upload/' + filename, { method: 'DELETE' });
                 if (res.ok) {
                     deleteMsg.textContent = filename + ' deleted.';
                     deleteMsg.className = 'upload-msg ok';
@@ -271,13 +319,64 @@
             downloadMsg.textContent = '';
             downloadMsg.className = 'upload-msg';
             const a = document.createElement('a');
-            a.href = 'uploads/' + encodeURIComponent(filename);
+            a.href = 'upload/' + encodeURIComponent(filename);
             a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             downloadMsg.textContent = 'Download started: ' + filename;
             downloadMsg.className = 'upload-msg ok';
+        });
+
+        const mpFileInput = document.getElementById('mpFileInput');
+        const mpDropZone = document.getElementById('mpDropZone');
+        const mpFileName = document.getElementById('mpFileName');
+        const mpDropText = document.getElementById('mpDropText');
+
+        function setMpFile(file) {
+            mpFileName.textContent = file ? file.name : '';
+            mpDropText.textContent = file ? '' : 'Click or drag a file';
+        }
+
+        mpFileInput.addEventListener('change', () => setMpFile(mpFileInput.files[0]));
+        mpDropZone.addEventListener('dragover', e => { e.preventDefault(); mpDropZone.classList.add('drag-over'); });
+        mpDropZone.addEventListener('dragleave', () => mpDropZone.classList.remove('drag-over'));
+        mpDropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            mpDropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) { mpFileInput.files = e.dataTransfer.files; setMpFile(file); }
+        });
+
+        document.getElementById('multipartForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const mpBtn = document.getElementById('mpBtn');
+            const mpMsg = document.getElementById('mpMsg');
+            const mpResponse = document.getElementById('mpResponse');
+            const mpResponseRow = document.getElementById('mpResponseRow');
+
+            mpBtn.disabled = true;
+            mpMsg.textContent = 'Sending...';
+            mpMsg.className = 'upload-msg';
+            mpResponseRow.style.display = 'none';
+
+            const fd = new FormData();
+            fd.append('name', document.getElementById('mpName').value);
+            fd.append('message', document.getElementById('mpMessage').value);
+            if (mpFileInput.files[0]) fd.append('file', mpFileInput.files[0]);
+
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: fd });
+                const text = await res.text();
+                mpMsg.textContent = res.ok ? 'Sent! Status: ' + res.status : 'Error: ' + res.status + ' ' + res.statusText;
+                mpMsg.className = 'upload-msg ' + (res.ok ? 'ok' : 'err');
+                mpResponse.textContent = text || '(empty body)';
+                mpResponseRow.style.display = '';
+            } catch (err) {
+                mpMsg.textContent = 'Connection error.';
+                mpMsg.className = 'upload-msg err';
+            }
+            mpBtn.disabled = false;
         });
 
         uploadForm.addEventListener('submit', async e => {

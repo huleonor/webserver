@@ -25,6 +25,7 @@ struct HttpRequest
 {
 // --- Fields ---
 	std::string							method;
+	std::string							uri;
 	std::string							path;
 	std::string							query_string;
 	std::string							version;

@@ -126,6 +126,11 @@ void	Client::receiveBody(const std::string& request)
 			return ;
 		_request.body += _request_buffer.substr(pos + 2, chunk_size);
 		_request_buffer.erase(0, pos + 2 + chunk_size + 2);
+		if (_request.body.size() > _server->getClientMaxBodySize())
+		{
+			buildErrorResponse(413);
+			return ;
+		}
 	}
 }
 
@@ -157,7 +162,7 @@ void	Client::parseMultipartIfNeeded()
 }
 
 /* --------------------------- Internal: Response --------------------------- */
-void	Client::buildAutoindex(const std::string& dirPath)
+void	Client::buildAutoindex(const std::string& dirPath, const std::string& loc)
 {
 	DIR*	dir = opendir(dirPath.c_str());
 	if (!dir)
@@ -166,8 +171,8 @@ void	Client::buildAutoindex(const std::string& dirPath)
 		return ;
 	}
 	std::ostringstream	html;
-	html << "<html><head><title>Index of " << _request.path << "</title></head>"
-		 << "<body><h1>Index of " << _request.path << "</h1><hr><ul>";
+	html << "<html><head><title>Index of " << _request.uri << "</title></head>"
+		 << "<body><h1>Index of " << _request.uri << "</h1><hr><ul>";
 
 	struct dirent*	entry;
 	while ((entry = readdir(dir)) != NULL)
@@ -175,7 +180,7 @@ void	Client::buildAutoindex(const std::string& dirPath)
 		std::string name = entry->d_name;
 		if (name == ".")
 			continue ;
-		html << "<li><a href=\"" << _request.path << name << "\">" << name << "</a></li>";
+		html << "<li><a href=\"" << loc << "/" << name << "\">" << name << "</a></li>";
 	}
 	closedir(dir);
 	html << "</ul><hr></body></html>";
@@ -340,7 +345,6 @@ void	Client::handleGet(const Location& loc)
 		_status = WRITING;
 		return ;
 	}
-
 	if (_request.isValidPath() && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
 		_request.path += '/';
 
@@ -352,7 +356,7 @@ void	Client::handleGet(const Location& loc)
 			_request.path += index;
 		else if (loc.getAutoindex())
 		{
-			buildAutoindex(_request.path);
+			buildAutoindex(_request.path, loc.getPath());
 			return ;
 		}
 		else
@@ -386,8 +390,6 @@ void	Client::handlePost(const Location& loc)
 		return ;
 	if (loc.getUploadPath().empty())
 		return buildErrorResponse(403);
-	else
-		_request.path = loc.getUploadPath();
 	if (_request.isValidPath())
 	{
 		if (!S_ISDIR(_request.target_info.st_mode))
@@ -399,6 +401,8 @@ void	Client::handlePost(const Location& loc)
 	if (_request.error_code != 0)
 		return buildErrorResponse(_request.error_code);
 	postContent();
+	(_request.uploads.size() > 1) ? _response.setUploadLocation(loc.getPath(), "") 
+			: _response.setUploadLocation(loc.getPath(), _request.uploads[0].filename);
 	_response.setCodeStatus(201);
 	_response.setStatusPhrase("Created");
 	_response.setBody("");
@@ -452,10 +456,25 @@ void	Client::handleCGI(const Location& loc)
 
 void	Client::validateAndReplacePath(const Location& loc)
 {
-	std::string	root = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
-	normalizeSlash(root);
-	_request.path = root + _request.path;
-	normalizeSlash(_request.path);
+	std::string	root;
+	if (!loc.getUploadPath().empty())
+	{
+		size_t	pos = _request.path.find(loc.getPath());
+		pos = pos + loc.getPath().size();
+		if (_request.path[pos] == '/')
+			pos++;
+		root = loc.getUploadPath();
+		normalizeSlash(root);
+		_request.path.erase(0, pos);
+		_request.path = root + '/' + _request.path;
+	}
+	else
+	{
+		root = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
+		normalizeSlash(root);
+		_request.path = root + _request.path;
+		normalizeSlash(_request.path);
+	}
 	if (!_request.resolvePathWithinRoot(root))
 		buildErrorResponse(403);
 }

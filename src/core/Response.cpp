@@ -98,11 +98,20 @@ void	Response::setStatusPhrase(const std::string& phrase)	{ _status_phrase = phr
 void	Response::setBody(const std::string& body)			{ _body = body; }
 void	Response::setLogMsg(const std::string& msg)			{ _log_close_msg = msg; }
 
+void	Response::setUploadLocation(const std::string& loc, const std::string& file)	
+{
+	std::string	locNormalized =  loc;
+	normalizeSlash(locNormalized);
+	_upload_location = file.empty() ? loc : locNormalized + '/' + file;
+}
+
 /* --------------------------------- Build ---------------------------------- */
 void	Response::buildSuccess(const std::string& mimeType)
 {
 	setFirstLine();
 	std::ostringstream	oss;
+	if (_status_code == 201 && !_upload_location.empty())
+		oss << "Location: " << _upload_location << "\r\n";
 	if (!_body.empty())
 		oss << "Content-Type: " << mimeType << "\r\n";
 	oss << "Content-Length: " << _body.size() << "\r\n"

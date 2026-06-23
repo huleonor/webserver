@@ -49,7 +49,7 @@ void	HttpRequest::parse(const std::string& header)
 		return ;
 	}
 	method = line.substr(0, pos1);
-	std::string uri = line.substr(pos1 + 1, pos2 - pos1 - 1);
+	uri = line.substr(pos1 + 1, pos2 - pos1 - 1);
 	version = line.substr(pos2 + 1);
 
 	if (method != "GET" && method != "POST" && method != "DELETE")

@@ -50,7 +50,7 @@ private:
 	void				parseMultipartIfNeeded();
 
 // --- Internal: Response ---
-	void				buildAutoindex(const std::string& dirPath);
+	void				buildAutoindex(const std::string& dirPath, const std::string& loc);
 	void				buildUploadFromPath(const Location& loc);
 	void				postContent();
 
