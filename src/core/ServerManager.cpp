@@ -42,7 +42,8 @@ void	ServerManager::acceptNewClient(size_t pfds_pos)
 			pfd.events = POLLIN;
 			_pfds.push_back(pfd);
 			std::cout << "\033[32m[INFO]: " << toAddrStr(addr.sin_addr.s_addr) << ":"
-					  << ntohs(addr.sin_port) << " | connected\033[0m" << std::endl;
+					  << ntohs(addr.sin_port) << " | connected on: " 
+					  << _servers[pfds_pos].getPort() << "\033[0m" << std::endl;
 		}
 		catch (const std::exception& e) { std::cerr << "\033[31m[ERROR]: " << e.what() << "\033[0m\n"; }
 	}

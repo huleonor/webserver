@@ -1,0 +1,34 @@
+#!/bin/bash
+
+URL1="http://127.0.0.1:8002"
+URL2="http://127.0.0.1:8003"
+DURATION="1M"
+
+GREEN="\033[32m"
+RED="\033[31m"
+YELLOW="\033[33m"
+RESET="\033[0m"
+
+echo "=== Stress Test ==="
+echo "URL: $URL1"
+echo "URL: $URL2"
+echo "Duration: $DURATION"
+
+siege -b -t $DURATION $URL1/ &
+PID1=$!
+siege -b -t $DURATION $URL2/ &
+PID2=$!
+
+wait $PID1
+if [ $? -eq 0 ]; then
+	echo -e "${GREEN}[PASS] Siege URL1${RESET}"
+else
+    echo -e "${RED}[FAIL] Siege URL1${RESET}"
+fi
+
+wait $PID2
+if [ $? -eq 0 ]; then
+	echo -e "${GREEN}[PASS] Siege URL2${RESET}"
+else
+    echo -e "${RED}[FAIL] Siege URL2${RESET}"
+fi

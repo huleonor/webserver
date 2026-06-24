@@ -180,7 +180,8 @@ void	Client::buildAutoindex(const std::string& dirPath, const std::string& loc)
 		std::string name = entry->d_name;
 		if (name == ".")
 			continue ;
-		html << "<li><a href=\"" << loc << "/" << name << "\">" << name << "</a></li>";
+		html << "<li><a href=\"" << loc
+			<< (loc[loc.size() - 1] == '/' ? "" : "/") << name << "\">" << name << "</a></li>";
 	}
 	closedir(dir);
 	html << "</ul><hr></body></html>";
@@ -197,7 +198,7 @@ void	Client::buildUploadFromPath(const Location& loc)
 	UploadFile	upload;
 	size_t	pos = _request.path.find_last_of('/');
 
-	if (pos != std::string::npos)
+	if (pos != std::string::npos && _request.path != loc.getUploadPath())
 		upload.filename = _request.path.substr(pos + 1);
 	upload.content = _request.body;
 	if (upload.filename == loc.getPath().substr(1) ||
@@ -384,12 +385,12 @@ void	Client::handleGet(const Location& loc)
 
 void	Client::handlePost(const Location& loc)
 {
+	if (loc.getUploadPath().empty())
+		return buildErrorResponse(403);
 	if (_request.uploads.size() == 0)
 		buildUploadFromPath(loc);
 	if (_status == ERROR)
 		return ;
-	if (loc.getUploadPath().empty())
-		return buildErrorResponse(403);
 	if (_request.isValidPath())
 	{
 		if (!S_ISDIR(_request.target_info.st_mode))
