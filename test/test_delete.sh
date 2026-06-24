@@ -10,6 +10,7 @@ RESET="\033[0m"
 
 echo "=== Test Delete ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: Upload '$FILE' via POST then DELETE it from upload/ — expects 200 or 204"
 
 echo "Test webserv delete" > $FILE
 curl -s -o /dev/null -X POST -T $FILE ${URL}upload/$FILE

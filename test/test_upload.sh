@@ -10,6 +10,7 @@ RESET="\033[0m"
 
 echo "=== Test upload ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: POST '$FILE' to upload/ — expects 200 or 201 Created"
 
 echo "Test webserv upload" > $FILE
 

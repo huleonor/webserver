@@ -9,13 +9,13 @@ for param in query.split('&'):
         key, value = param.split('=', 1)
         params[key] = value
 result = "not found"
-name = params.get("name", "")
+animal = params.get("animal", "")
 
-data = [{"name": "Carlos", "age": 25}, {"name": "Hugo", "age":20}]
+data = [{"animal": "dog", "age": 3}, {"animal": "cat", "age":2}]
 
-for	person in data:
-	if person["name"] == name:
-		result = f"Person found: {person['name']}, {person['age']}"
+for	item in data:
+	if item["animal"] == animal:
+		result = f"Animal found: {animal}, {item['age']}"
 
 print("Content-Type: text/plain\r")
 print("\r")

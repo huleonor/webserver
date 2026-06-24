@@ -9,6 +9,7 @@ RESET="\033[0m"
 
 echo "=== Test Redirect ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: GET /red — expects 301 redirect; then follows redirect — expects 200 at destination"
 
 status=$(curl -s -o /dev/null -w "%{http_code}" ${URL}red)
 redirect=$(curl -s -o /dev/null -w "%{redirect_url}" ${URL}red)

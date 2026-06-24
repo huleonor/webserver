@@ -10,6 +10,7 @@ RESET="\033[0m"
 
 echo "=== Test CGI crash ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: GET cgi-bin/crash.py (script raises an exception/exits with error) — expects 500 Internal Server Error"
 
 status=$(curl -s -o /dev/null -w "%{http_code}" ${URL}cgi-bin/crash.py)
 

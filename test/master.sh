@@ -9,6 +9,9 @@ PASS=0
 FAIL=0
 WEBSERV_PID=$(pgrep webserv)
 
+echo "=== Master Test Runner ==="
+echo "Description: Runs all .sh test scripts in this folder sequentially and stops if webserv crashes"
+
 for script in ./*.sh; do
 	if [ "$script" != "$0" ]; then
 		bash "$script"

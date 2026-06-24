@@ -13,6 +13,7 @@ echo "=== Stress Test ==="
 echo -e "${YELLOW}Testing in server: $URL1${RESET}"
 echo -e "${YELLOW}Testing in server: $URL2${RESET}"
 echo "Duration: $DURATION"
+echo "Description: Run siege benchmark on both servers simultaneously for $DURATION — expects siege to exit successfully (no crash)"
 
 siege -b -t $DURATION -q $URL1/ &
 PID1=$!

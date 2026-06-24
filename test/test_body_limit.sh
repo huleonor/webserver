@@ -9,6 +9,7 @@ RESET="\033[0m"
 
 echo "=== Test body limit ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: POST 999999-byte body (expect 413 Content Too Large) and POST small body 'short' (expect 200/201)"
 
 python3 -c "print('A' * 999999)" > large_body.txt
 

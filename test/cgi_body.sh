@@ -11,11 +11,10 @@ BODY="test cgi post"
 
 echo "=== Test CGI body ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: POST request with body '$BODY' to cgi-bin/body.py — expects 200 and body echoed back"
 
 body=$(curl -s -X POST --data $BODY ${URL}cgi-bin/body.py)
 status=$(curl -s -o /dev/null -w "%{http_code}" ${URL}cgi-bin/body.py)
-
-echo "body request: $BODY"
 
 if [ $status -eq 200 ]; then
 	echo -e "${GREEN}[PASS] success. $status${RESET} | CGI Response: '$body'"

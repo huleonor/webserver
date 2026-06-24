@@ -10,6 +10,7 @@ RESET="\033[0m"
 
 echo "=== Test Wrong URL ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: GET various invalid paths (404, path traversal, non-existent files) — expects 400, 403 or 404"
 
 URLS=(
     "${URL}page_not_found"

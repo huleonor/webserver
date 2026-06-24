@@ -11,6 +11,7 @@ RESET="\033[0m"
 echo "=== Test different content from different servers ==="
 echo -e "${YELLOW}Testing in server: $URL1${RESET}"
 echo -e "${YELLOW}Testing in server: $URL2${RESET}"
+echo "Description: GET root from both servers — expects both to return 200 and their responses to differ"
 
 BODY1=$(curl -s $URL1)
 BODY2=$(curl -s $URL2)

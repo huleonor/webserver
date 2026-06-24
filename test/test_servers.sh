@@ -9,7 +9,8 @@ YELLOW="\033[33m"
 RESET="\033[0m"
 
 echo "=== Test different servers ==="
-echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo -e "${YELLOW}Testing in server: $URL1 and $URL2${RESET}"
+echo "Description: GET root from server 1 (port 8002) and server 2 (port 8003) — expects both to return 200"
 
 status1=$(curl -s -o /dev/null -w "%{http_code}" $URL1)
 status2=$(curl -s -o /dev/null -w "%{http_code}" $URL2)

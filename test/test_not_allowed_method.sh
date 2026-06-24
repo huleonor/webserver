@@ -11,6 +11,7 @@ METHOD="POST"
 
 echo "=== Test not allowed method ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: Send $METHOD to root / (which only allows GET) — expects 405 Method Not Allowed"
 
 status=$(curl -s -o /dev/null -w "%{http_code}" -X $METHOD $URL)
 if [ $status -eq 405 ]; then

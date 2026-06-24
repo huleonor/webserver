@@ -9,6 +9,7 @@ RESET="\033[0m"
 
 echo "=== Test CGI close stdout early ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: GET cgi-bin/close_stdout.py (script closes stdout before writing) — expects 500 Internal Server Error"
 
 status=$(curl -s -o /dev/null -w "%{http_code}" ${URL}cgi-bin/close_stdout.py)
 

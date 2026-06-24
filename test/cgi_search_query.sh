@@ -11,7 +11,8 @@ RESET="\033[0m"
 echo "=== Test CGI search query ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
 
-QUERY="name=Carlos&age=24"
+QUERY="name=dog"
+echo "Description: GET cgi-bin/search_query.py?$QUERY — expects 200 and query params parsed in response"
 BODY=$(curl -s ${URL}cgi-bin/search_query.py?$QUERY)
 status=$(curl -s -o /dev/null -w "%{http_code}" ${URL}cgi-bin/search_query.py?$QUERY)
 if [ $status -eq 200 ]; then

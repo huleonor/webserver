@@ -11,6 +11,8 @@ INVALID="INVAL"
 
 echo "=== Test invalid method ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
+echo "Description: Send unknown method '$INVALID' to root — expects 400 Bad Request or 501 Not Implemented"
+
 
 status=$(curl -s -o /dev/null -w ""%{http_code} -X $INVALID $URL)
 
