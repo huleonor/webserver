@@ -1,6 +1,6 @@
 #!/bin/bash
 
-URL="http://127.0.0.1:8002"
+URL="http://127.0.0.1:8002/"
 FILE="delete_file.txt"
 
 GREEN="\033[32m"
@@ -12,11 +12,11 @@ echo "=== Test Wrong URL ==="
 echo -e "${YELLOW}Testing in server: $URL${RESET}"
 
 URLS=(
-    "$URL/page_not_found"
-    "$URL/foo/bar/baz"
-    "$URL/does_not_exist.html"
-    "$URL/../../../etc/passwd"
-    "$URL/../../../../etc/"
+    "${URL}page_not_found"
+    "${URL}foo/bar/baz"
+    "${URL}does_not_exist.html"
+    "${URL}../../../etc/passwd"
+    "${URL}../../../../etc/"
 )
 
 for url in "${URLS[@]}"; do

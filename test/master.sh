@@ -7,18 +7,16 @@ RESET="\033[0m"
 
 PASS=0
 FAIL=0
+WEBSERV_PID=$(pgrep webserv)
 
 for script in ./*.sh; do
 	if [ "$script" != "$0" ]; then
 		bash "$script"
-		if [ $? -eq 0 ]; then
-			PASS=$((PASS + 1))
-		else
-			FAIL=$((FAIL + 1))
-		fi
+		if ! kill -0 $WEBSERV_PID 2>/dev/null; then
+            echo -e "${RED}[ERROR] webserv crashed after $script/or server is not running${RESET}"
+            exit 1
+        fi
 	fi
 done
 
 echo ""
-echo -e "${GREEN}PASS:${RESET} $PASS"
-echo -e "${RED}FAIL:${RESET} $FAIL"

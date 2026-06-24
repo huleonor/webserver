@@ -1,6 +1,6 @@
 #!/bin/bash
 
-URL="http://127.0.0.1:8002"
+URL="http://127.0.0.1:8002/"
 FILE="test_file.txt"
 
 GREEN="\033[32m"
@@ -13,7 +13,7 @@ echo -e "${YELLOW}Testing in server: $URL${RESET}"
 
 echo "Test webserv upload" > $FILE
 
-status=$(curl -s -o /dev/null -w "%{http_code}" -X POST -T $FILE $URL/upload/)
+status=$(curl -s -o /dev/null -w "%{http_code}" -X POST -T $FILE ${URL}upload/)
 
 if [ $status -eq 200 ] || [ $status -eq 201 ]; then
     echo -e "${GREEN}[PASS] Upload → $status${RESET}"
