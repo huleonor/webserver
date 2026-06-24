@@ -8,6 +8,7 @@ RED="\033[31m"
 RESET="\033[0m"
 
 echo "=== Test Redirect ==="
+echo -e "${YELLOW}Testing in server: $URL${RESET}"
 
 status=$(curl -s -o /dev/null -w "%{http_code}" $URL/red)
 redirect=$(curl -s -o /dev/null -w "%{redirect_url}" $URL/red)
@@ -25,3 +26,5 @@ if [ $status -eq 200 ]; then
 else
     echo -e "${RED}[FAIL] Redirect followed → $status${RESET}"
 fi
+
+echo ""

@@ -10,13 +10,13 @@ YELLOW="\033[33m"
 RESET="\033[0m"
 
 echo "=== Stress Test ==="
-echo "URL: $URL1"
-echo "URL: $URL2"
+echo -e "${YELLOW}Testing in server: $URL1${RESET}"
+echo -e "${YELLOW}Testing in server: $URL2${RESET}"
 echo "Duration: $DURATION"
 
-siege -b -t $DURATION $URL1/ &
+siege -b -t $DURATION -q $URL1/ &
 PID1=$!
-siege -b -t $DURATION $URL2/ &
+siege -b -t $DURATION -q $URL2/ &
 PID2=$!
 
 wait $PID1
@@ -32,3 +32,5 @@ if [ $? -eq 0 ]; then
 else
     echo -e "${RED}[FAIL] Siege URL2${RESET}"
 fi
+
+echo ""

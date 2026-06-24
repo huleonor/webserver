@@ -5,9 +5,11 @@ URL2="http://127.0.0.1:8003/"
 
 GREEN="\033[32m"
 RED="\033[31m"
+YELLOW="\033[33m"
 RESET="\033[0m"
 
 echo "=== Test different servers ==="
+echo -e "${YELLOW}Testing in server: $URL${RESET}"
 
 status1=$(curl -s -o /dev/null -w "%{http_code}" $URL1)
 status2=$(curl -s -o /dev/null -w "%{http_code}" $URL2)
@@ -23,3 +25,5 @@ if [ $status2 -eq 200 ]; then
 else
     echo -e "${RED}[FAIL] Server 2 ($URL2) → $status2${RESET}"
 fi
+
+echo ""

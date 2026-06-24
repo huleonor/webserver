@@ -5,9 +5,11 @@ FILE="test_file.txt"
 
 GREEN="\033[32m"
 RED="\033[31m"
+YELLOW="\033[33m"
 RESET="\033[0m"
 
 echo "=== Test upload ==="
+echo -e "${YELLOW}Testing in server: $URL${RESET}"
 
 echo "Test webserv upload" > $FILE
 
@@ -20,3 +22,5 @@ else
 fi
 
 rm $FILE
+
+echo ""

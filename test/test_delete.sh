@@ -4,11 +4,12 @@ URL="http://127.0.0.1:8002"
 FILE="delete_file.txt"
 
 GREEN="\033[32m"
+YELLOW="\033[33m"
 RED="\033[31m"
 RESET="\033[0m"
 
 echo "=== Test Delete ==="
-
+echo -e "${YELLOW}Testing in server: $URL${RESET}"
 
 echo "Test webserv delete" > $FILE
 curl -s -o /dev/null -X POST -T $FILE $URL/upload/$FILE
@@ -22,3 +23,5 @@ else
 fi
 
 rm $FILE
+
+echo ""
