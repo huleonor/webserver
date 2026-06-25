@@ -2,7 +2,7 @@
 #include <algorithm>
 
 /* ------------------------------- Lifecycle -------------------------------- */
-Location::Location() : _autoindex(false) {}
+Location::Location() : _autoindex(false), _client_max_body_size(0) {}
 
 Location::Location(const Location& other)
 	: _path(other._path),
@@ -13,7 +13,8 @@ Location::Location(const Location& other)
 	  _return(other._return),
 	  _cgi_ext(other._cgi_ext),
 	  _cgi_path(other._cgi_path),
-	  _upload_path(other._upload_path) {}
+	  _upload_path(other._upload_path),
+	  _client_max_body_size(other._client_max_body_size) {}
 
 Location& Location::operator=(const Location& other)
 {
@@ -28,6 +29,7 @@ Location& Location::operator=(const Location& other)
 		_cgi_ext = other._cgi_ext;
 		_cgi_path = other._cgi_path;
 		_upload_path = other._upload_path;
+		_client_max_body_size = other._client_max_body_size;
 	}
 	return *this;
 }
@@ -54,7 +56,10 @@ void Location::addAllowMethod(const std::string &m)   { _allow_methods.push_back
 void Location::setReturn(const std::string &redirect) { _return = redirect; }
 void Location::addCgiExt(const std::string &ext)      { _cgi_ext.push_back(ext); }
 void Location::addCgiPath(const std::string &path)    { _cgi_path.push_back(path); }
-void Location::setUploadPath(const std::string &path) { _upload_path = path; }
+void Location::setUploadPath(const std::string &path)    { _upload_path = path; }
+void Location::setClientMaxBodySize(unsigned long size)  { _client_max_body_size = size; }
+
+unsigned long Location::getClientMaxBodySize() const     { return _client_max_body_size; }
 
 /* ------------------------------ Validations ------------------------------- */
 bool Location::isValidMethod(const std::string& method) const

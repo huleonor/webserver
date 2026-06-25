@@ -146,6 +146,16 @@ void ConfigParser::parseLocationBlock(size_t &i, Location &location)
         }
         else if (line.substr(0, 11) == "upload_path")
             location.setUploadPath(extractValue(line));
+        else if (line.substr(0, 20) == "client_max_body_size")
+        {
+            std::string value = extractValue(line);
+            std::stringstream ss(value);
+            unsigned long size;
+            ss >> size;
+            if (ss.fail() || !ss.eof())
+                throw std::runtime_error("Invalid client_max_body_size: " + value);
+            location.setClientMaxBodySize(size);
+        }
         i++;
     }
     if (i >= _lines.size())

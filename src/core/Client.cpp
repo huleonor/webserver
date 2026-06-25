@@ -31,6 +31,14 @@ static std::string	getMimeType(const std::string& path)
 }
 
 /* ---------------------------- Internal: Request --------------------------- */
+unsigned long	Client::getEffectiveBodyLimit() const
+{
+	const Location* loc = _server->findLocation(_request.path);
+	if (loc && loc->getClientMaxBodySize() > 0)
+		return loc->getClientMaxBodySize();
+	return _server->getClientMaxBodySize();
+}
+
 void	Client::receiveHeader(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
@@ -70,7 +78,7 @@ void	Client::receiveHeader(const std::string& request)
 				buildErrorResponse(400);
 				return ;
 			}
-			if (_content_length > _server->getClientMaxBodySize())
+			if (_content_length > getEffectiveBodyLimit())
 			{
 				buildErrorResponse(413);
 				return ;
@@ -91,7 +99,7 @@ void	Client::receiveHeader(const std::string& request)
 
 void	Client::receiveBody(const std::string& request)
 {
-	if (_request_buffer.size() + request.size() > _server->getClientMaxBodySize())
+	if (!_chunked && _request_buffer.size() + request.size() > getEffectiveBodyLimit())
 	{
 		buildErrorResponse(413);
 		return ;
@@ -126,7 +134,7 @@ void	Client::receiveBody(const std::string& request)
 			return ;
 		_request.body += _request_buffer.substr(pos + 2, chunk_size);
 		_request_buffer.erase(0, pos + 2 + chunk_size + 2);
-		if (_request.body.size() > _server->getClientMaxBodySize())
+		if (_request.body.size() > getEffectiveBodyLimit())
 		{
 			buildErrorResponse(413);
 			return ;
@@ -357,16 +365,11 @@ void	Client::handleGet(const Location& loc)
 	}
 	if (_request.isValidPath() && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
 		_request.path += '/';
+	
 
 	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
 	{
 		std::string	index = loc.getIndex().empty() ? _server->getIndex() : loc.getIndex();
-		struct stat	idx_stat;
-		if (stat((_request.path + index).c_str(), &idx_stat) != 0 || S_ISDIR(idx_stat.st_mode))
-		{
-			buildErrorResponse(404);
-			return ;
-		}
 		std::ifstream	test((_request.path + index).c_str());
 		if (test.is_open())
 			_request.path += index;
@@ -401,7 +404,7 @@ void	Client::handleGet(const Location& loc)
 void	Client::handlePost(const Location& loc)
 {
 	if (loc.getUploadPath().empty())
-		return buildErrorResponse(403);
+		return buildErrorResponse(405);
 	if (_request.uploads.size() == 0)
 		buildUploadFromPath(loc);
 	if (_status == ERROR)
@@ -497,8 +500,12 @@ void	Client::validateAndReplacePath(const Location& loc)
 		}
 		else
 			_request.path = root + _request.path;
-		normalizeSlash(_request.path);
 	}
+	bool	slash_in_end = false;
+	if (_request.path[_request.path.size() - 1] == '/')
+		slash_in_end = true;
 	if (!_request.resolvePathWithinRoot(root))
 		buildErrorResponse(403);
+	if (slash_in_end)
+		_request.path.append("/");
 }
