@@ -505,7 +505,7 @@ void	Client::validateAndReplacePath(const Location& loc)
 	if (_request.path[_request.path.size() - 1] == '/')
 		slash_in_end = true;
 	if (!_request.resolvePathWithinRoot(root))
-		buildErrorResponse(403);
+		return buildErrorResponse(403);
 	if (slash_in_end)
 		_request.path.append("/");
 }
