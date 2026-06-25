@@ -64,18 +64,12 @@ bool Location::isValidMethod(const std::string& method) const
 
 bool Location::findFileExtension(const std::string& path, const std::string& loc) const
 {
-	std::vector<std::string>::const_iterator it;
-	size_t root = path.find(loc);
-	if (root != std::string::npos)
-	{
-		size_t dot = path.find(".", root);
-		if (dot == std::string::npos)
-			return (false);
-		size_t slash = path.rfind('/');
-		if (slash != std::string::npos && slash > dot)
-			return (false);
-		std::string ext = path.substr(dot);
-		it = std::find(_cgi_ext.begin(), _cgi_ext.end(), ext);
-	}
-	return (it != _cgi_ext.end());
+	(void)loc;
+	size_t last_slash = path.rfind('/');
+	size_t start = (last_slash != std::string::npos) ? last_slash + 1 : 0;
+	size_t dot = path.find('.', start);
+	if (dot == std::string::npos || path.find('/', dot) != std::string::npos)
+		return false;
+	std::string ext = path.substr(dot);
+	return (std::find(_cgi_ext.begin(), _cgi_ext.end(), ext) != _cgi_ext.end());
 }

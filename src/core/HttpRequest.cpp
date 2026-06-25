@@ -52,7 +52,7 @@ void	HttpRequest::parse(const std::string& header)
 	uri = line.substr(pos1 + 1, pos2 - pos1 - 1);
 	version = line.substr(pos2 + 1);
 
-	if (method != "GET" && method != "POST" && method != "DELETE")
+	if (method != "GET" && method != "POST" && method != "DELETE" && method != "HEAD" && method != "PUT")
 	{
 		error_code = 501;
 		return ;

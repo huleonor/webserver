@@ -116,30 +116,27 @@ void	CgiHandler::setInterpreterPath(const std::string& path) { _interpreter_path
 /* ------------------------------- CGI Parsing ------------------------------ */
 void	CgiHandler::extractCgiInfo(const std::string& loc)
 {
-	size_t root = _request.path.find(loc);
-	if (root != std::string::npos)
+	(void)loc;
+	size_t search_start = (_request.path.size() >= 2 && _request.path[0] == '.' && _request.path[1] == '/') ? 2 : 0;
+	size_t dot = _request.path.find('.', search_start);
+	if (dot == std::string::npos)
+		return _client.buildErrorResponse(403);
+	size_t next_slash = _request.path.find('/', dot);
+	size_t ext_len = (next_slash == std::string::npos) ? _request.path.length() - dot : next_slash - dot;
+	_ext = _request.path.substr(dot, ext_len);
+	std::string script = (next_slash == std::string::npos) ? _request.path : _request.path.substr(0, next_slash);
+	if (script.size() >= 2 && script[0] == '.' && script[1] == '/')
+		script.erase(0, 2);
+	else if (!script.empty() && script[0] == '/')
+		script.erase(0, 1);
+	_script_path = script;
+	size_t slash = script.rfind('/');
+	_filename = (slash != std::string::npos) ? script.substr(slash + 1) : script;
+	if (next_slash != std::string::npos)
 	{
-    	size_t dot = _request.path.find(".", root);
-    	if (dot == std::string::npos)
-			return _client.buildErrorResponse(403);
-    	size_t start_script = root + loc.size();
-    	if (start_script < _request.path.size() && _request.path[start_script] == '/')
-    	    start_script++;
-    	size_t next_slash = _request.path.find('/', dot);
-    	size_t ext_len = (next_slash == std::string::npos) ? _request.path.length() - dot : next_slash - dot;
-		_ext = _request.path.substr(dot, ext_len);
-    	_filename = _request.path.substr(start_script, dot - start_script) + _ext;
-		_script_path = loc[loc.size() - 1] == '/' ? loc + _filename : loc + '/' + _filename;
-		if (_script_path[0] == '/')
-			_script_path.erase(0, 1);
-    	if (next_slash != std::string::npos)
-		{
-    	    _path_info = _request.path.substr(next_slash);
-			_request.path = _request.path.substr(0, next_slash);
-		}
+		_path_info = _request.path.substr(next_slash);
+		_request.path = _request.path.substr(0, next_slash);
 	}
-	else
-		_client.buildErrorResponse(400);
 }
 /* -------------------------------- CGI Setup ------------------------------- */
 struct pollfd CgiHandler::cgiSetup()

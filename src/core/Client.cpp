@@ -355,12 +355,19 @@ void	Client::handleGet(const Location& loc)
 		_status = WRITING;
 		return ;
 	}
+	std::cout << "HandleGet: " << _request.path << std::endl; // --- DELETE
 	if (_request.isValidPath() && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
 		_request.path += '/';
 
 	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
 	{
 		std::string	index = loc.getIndex().empty() ? _server->getIndex() : loc.getIndex();
+		struct stat	idx_stat;
+		if (stat((_request.path + index).c_str(), &idx_stat) != 0 || S_ISDIR(idx_stat.st_mode))
+		{
+			buildErrorResponse(404);
+			return ;
+		}
 		std::ifstream	test((_request.path + index).c_str());
 		if (test.is_open())
 			_request.path += index;
@@ -482,9 +489,18 @@ void	Client::validateAndReplacePath(const Location& loc)
 	{
 		root = loc.getRoot().empty() ? _server->getRoot() : loc.getRoot();
 		normalizeSlash(root);
-		_request.path = root + _request.path;
+		if (!loc.getRoot().empty())
+		{
+			std::string suffix = _request.path.substr(loc.getPath().size());
+			if (suffix.empty() || suffix[0] != '/')
+				suffix = "/" + suffix;
+			_request.path = root + suffix;
+		}
+		else
+			_request.path = root + _request.path;
 		normalizeSlash(_request.path);
 	}
+	std::cout << _request.path << std::endl; // --- DELETE
 	if (!_request.resolvePathWithinRoot(root))
 		buildErrorResponse(403);
 }
