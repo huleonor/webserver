@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <cstdlib>
 #include <sys/wait.h>
+#include <signal.h>
 
 #include <iostream>
 

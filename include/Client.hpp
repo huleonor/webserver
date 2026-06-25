@@ -88,7 +88,7 @@ public:
 
 // --- Response ---
 	void				buildErrorResponse(int code);
-	void				buildCgiResponse(const std::string& body);
+	void				buildCgiResponse(const std::string& body, const std::string& content_type = "text/html", int status_code = 200);
 	void				sendResponse();
 
 // --- HTTP Methods ---

@@ -310,12 +310,21 @@ void	Client::buildErrorResponse(int code)
 	setLogMsg(oss.str());
 }
 
-void	Client::buildCgiResponse(const std::string& body)
+void	Client::buildCgiResponse(const std::string& body, const std::string& content_type, int status_code)
 {
-	_response.setCodeStatus(200);
-	_response.setStatusPhrase("OK");
+	std::string	phrase = "OK";
+	if (status_code == 201) phrase = "Created";
+	else if (status_code == 204) phrase = "No Content";
+	else if (status_code == 301) phrase = "Moved Permanently";
+	else if (status_code == 302) phrase = "Found";
+	else if (status_code == 400) phrase = "Bad Request";
+	else if (status_code == 403) phrase = "Forbidden";
+	else if (status_code == 404) phrase = "Not Found";
+	else if (status_code == 500) phrase = "Internal Server Error";
+	_response.setCodeStatus(status_code);
+	_response.setStatusPhrase(phrase);
 	_response.setBody(body);
-	_response.buildSuccess("text/html");
+	_response.buildSuccess(content_type);
 	_status = WRITING;
 }
 

@@ -173,10 +173,14 @@ void	ServerManager::handleCgiProcess(size_t& pfds_pos)
 
 	ssize_t	n = read(_pfds[pfds_pos].fd, buffer, sizeof(buffer));
 	if (n < 0)
-		{ handleCgiPollCleanUp(pfds_pos, "CGI pipe closed without process exit"); return ; }
+	{
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return ;
+		handleCgiPollCleanUp(pfds_pos, "CGI pipe closed without process exit"); return ;
+	}
 	if (n > 0)
 		{ cgi->receiveCgiOutput(std::string(buffer, n)); return ; }
-	if (cgi->checkWaitpid() == 0)
+	if (!cgi->getCgiOutputBuffer().empty() || cgi->checkWaitpid() == 0)
 		{ processCgiOutput(client, cgi, pfds_pos); return; }
 	closeFdAndCleanMaps(cgi, pfds_pos, true);
 	cgi->setStatus(CgiHandler::ERROR);
@@ -216,6 +220,8 @@ void	ServerManager::processCgiOutput(Client* client, CgiHandler* cgi, size_t& pf
 	size_t				sep = output.find("\r\n\r\n");
 	size_t				offset = 4;
 	std::string			body;
+	std::string			content_type = "text/html";
+	int					status_code = 200;
 
 	if (sep == std::string::npos)
 	{
@@ -225,9 +231,31 @@ void	ServerManager::processCgiOutput(Client* client, CgiHandler* cgi, size_t& pf
 	if (sep == std::string::npos)
 		body = output;
 	else
+	{
+		std::string	cgi_headers = output.substr(0, sep);
+		size_t ct = cgi_headers.find("Content-Type:");
+		if (ct != std::string::npos)
+		{
+			size_t end = cgi_headers.find("\n", ct);
+			content_type = cgi_headers.substr(ct + 13, end - ct - 13);
+			size_t s = content_type.find_first_not_of(" \r");
+			if (s != std::string::npos) content_type = content_type.substr(s);
+			size_t e = content_type.find_last_not_of(" \r");
+			if (e != std::string::npos) content_type = content_type.substr(0, e + 1);
+		}
+		size_t st = cgi_headers.find("Status:");
+		if (st != std::string::npos)
+		{
+			size_t end = cgi_headers.find("\n", st);
+			std::string status_str = cgi_headers.substr(st + 7, end - st - 7);
+			size_t s = status_str.find_first_not_of(" \r");
+			if (s != std::string::npos)
+				status_code = std::atoi(status_str.substr(s).c_str());
+		}
 		body = output.substr(sep + offset);
+	}
 	closeFdAndCleanMaps(cgi, pfds_pos, true);
-	processCgiClientResponse(client, 200, body);
+	processCgiClientResponse(client, status_code, body, content_type);
 }
 
 void	ServerManager::closeFdAndCleanMaps(CgiHandler* cgi, size_t& pfds_pos, bool closeFds)
@@ -239,13 +267,13 @@ void	ServerManager::closeFdAndCleanMaps(CgiHandler* cgi, size_t& pfds_pos, bool 
 	pfds_pos--;
 }
 
-void	ServerManager::processCgiClientResponse(Client* client, int code, const std::string body)
+void	ServerManager::processCgiClientResponse(Client* client, int code, const std::string body, const std::string content_type)
 {
 	int	client_socket = client->getClientSocket();
 	if (client->getCgi()->getStatus() == CgiHandler::ERROR)
 		client->buildErrorResponse(code);
 	else
-		client->buildCgiResponse(body);
+		client->buildCgiResponse(body, content_type, code);
 	for (size_t i = 0; i < _pfds.size(); i++)
 	{
 		if (_pfds[i].fd == client_socket)

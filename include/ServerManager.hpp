@@ -38,7 +38,7 @@ private:
 	void	sendCgiBody(size_t& pfds_pos);
 	void	processCgiOutput(Client* client, CgiHandler* cgi, size_t& pfds_pos);
 	void	closeFdAndCleanMaps(CgiHandler* cgi, size_t& pfds_pos, bool closeFds);
-	void	processCgiClientResponse(Client* client, int code, const std::string body);
+	void	processCgiClientResponse(Client* client, int code, const std::string body, const std::string content_type = "text/html");
 	void	handleCgiPollCleanUp(size_t& pfds_pos, const std::string& logMsg);
 
 // --- Internal: Runtime ---
