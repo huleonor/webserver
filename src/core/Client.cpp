@@ -355,7 +355,6 @@ void	Client::handleGet(const Location& loc)
 		_status = WRITING;
 		return ;
 	}
-	std::cout << "HandleGet: " << _request.path << std::endl; // --- DELETE
 	if (_request.isValidPath() && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
 		_request.path += '/';
 
@@ -500,7 +499,6 @@ void	Client::validateAndReplacePath(const Location& loc)
 			_request.path = root + _request.path;
 		normalizeSlash(_request.path);
 	}
-	std::cout << _request.path << std::endl; // --- DELETE
 	if (!_request.resolvePathWithinRoot(root))
 		buildErrorResponse(403);
 }
