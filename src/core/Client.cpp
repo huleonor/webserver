@@ -361,12 +361,6 @@ void	Client::handleGet(const Location& loc)
 	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
 	{
 		std::string	index = loc.getIndex().empty() ? _server->getIndex() : loc.getIndex();
-		struct stat	idx_stat;
-		if (stat((_request.path + index).c_str(), &idx_stat) != 0 || S_ISDIR(idx_stat.st_mode))
-		{
-			buildErrorResponse(404);
-			return ;
-		}
 		std::ifstream	test((_request.path + index).c_str());
 		if (test.is_open())
 			_request.path += index;

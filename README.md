@@ -210,7 +210,7 @@ curl http://localhost:8080/cgi-bin/calendar.sh
 
 ## How AI Was Used
 
-AI (Claude) was used as a development aid throughout the project — not to write code autonomously, but as a tool to accelerate problem-solving and understanding.
+AI (Claude) was used as a development aid throughout the project — not to write code autonomously, but as a tool to test, accelerate problem-solving and understanding.
 
 ### Debugging & Error Analysis
 When the server produced unexpected behavior (e.g., incorrect HTTP responses, `select()` timeouts, CGI process leaks), AI was used to reason through the root cause by describing the symptoms and examining relevant code sections together.

@@ -58,7 +58,7 @@ void	ServerManager::handleClientRequest(size_t& pfds_pos)
 		ssize_t	n = it->second->receiveData();
 		if (n <= 0)
 		{
-			std::string	msg = (n == -1) ? "recv failed: " + std::string(strerror(errno)) : "";
+			std::string	msg = (n == -1) ? "recv failed" : "";
 			it->second->setLogMsg(msg);
 			return closeConnection(pfds_pos);
 		}
@@ -87,7 +87,7 @@ void	ServerManager::handleClientResponse(size_t& pfds_pos)
 	it->second->sendResponse();
 	if (it->second->getStatus() == Client::ERROR)
 	{
-		it->second->setLogMsg("send failed: " + std::string(strerror(errno)));
+		it->second->setLogMsg("send failed");
 		it->second->setStatus(Client::CLOSE);
 	}
 	std::cout << "[RESPONSE]: " << addr << ":" << port << " | Request:"
@@ -338,7 +338,7 @@ void	ServerManager::monitorClients()
 			_pfds[i].events = POLLOUT;
 		}
 		CgiHandler* cgi = c->getCgi();
-		if (cgi && cgi->getPid() > 0 && time(NULL) - cgi->getStartTime() >= 10)
+		if (cgi && cgi->getPid() > 0 && time(NULL) - cgi->getStartTime() >= 60)
 		{
 			kill(cgi->getPid(), SIGKILL);
 			cgi->checkWaitpid();
