@@ -107,7 +107,7 @@ void	ServerManager::processClientRequest(Client& client)
 	if (client.getStatus() == Client::ERROR)
 		return ;
 	if (!location->getCgiExt().empty() && !location->getCgiPath().empty()
-			&& location->findFileExtension(client.getRequest().path, location->getPath()))
+			&& location->findFileExtension(client.getRequest().path))
 	{
 		client.handleCGI(*location);
 		if (client.getStatus() == Client::ERROR)

@@ -70,7 +70,7 @@ public:
 	void				setInterpreterPath(const std::string& path);
 
 // --- CGI Parsing ---
-	void	extractCgiInfo(const std::string& loc);
+	void	extractCgiInfo();
 
 // --- CGI Setup ---
 	struct pollfd	cgiSetup();

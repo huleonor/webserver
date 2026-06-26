@@ -67,9 +67,8 @@ bool Location::isValidMethod(const std::string& method) const
 	return (std::find(_allow_methods.begin(), _allow_methods.end(), method) != _allow_methods.end());
 }
 
-bool Location::findFileExtension(const std::string& path, const std::string& loc) const
+bool Location::findFileExtension(const std::string& path) const
 {
-	(void)loc;
 	size_t last_slash = path.rfind('/');
 	size_t start = (last_slash != std::string::npos) ? last_slash + 1 : 0;
 	size_t dot = path.find('.', start);

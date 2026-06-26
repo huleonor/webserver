@@ -52,7 +52,7 @@ public:
 
 // --- Validations ---
 	bool	isValidMethod(const std::string& method) const;
-	bool	findFileExtension(const std::string& path, const std::string& loc) const;
+	bool	findFileExtension(const std::string& path) const;
 };
 
 #endif

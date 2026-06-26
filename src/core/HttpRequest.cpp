@@ -154,6 +154,8 @@ bool	HttpRequest::isValidPath()
 			error_code = 403;
 		else if (errno == ENOENT)
 			error_code = 404;
+		else if (errno == ENOTDIR)
+			error_code = 400;
 		else
 			error_code = 500;
 		return (false);
@@ -168,6 +170,8 @@ bool	HttpRequest::resolvePathWithinRoot(const std::string& root)
 	std::vector<std::string>	segments;
 	std::vector<std::string>	resolved;
 	std::string	token;
+	bool	slash_in_end = path[path.size() - 1] == '/';	
+
 	while (std::getline(ss, token, '/'))
 		segments.push_back(token);
 	for (size_t i = 0; i < segments.size(); i++)
@@ -185,7 +189,8 @@ bool	HttpRequest::resolvePathWithinRoot(const std::string& root)
 	path.clear();
 	for (size_t i = 0; i < resolved.size(); i++)
 		path += (resolved[i] + '/');
-	normalizeSlash(path);
+	if (!slash_in_end)
+		normalizeSlash(path);
 	if (resolved.empty())
 		return (false);
 	return (path.size() >= root.size() &&

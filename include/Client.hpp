@@ -51,7 +51,7 @@ private:
 	unsigned long		getEffectiveBodyLimit() const;
 
 // --- Internal: Response ---
-	void				buildAutoindex(const std::string& dirPath, const std::string& loc);
+	void				buildAutoindex(const std::string& dirPath, const std::string& uri);
 	void				buildUploadFromPath(const Location& loc);
 	void				postContent();
 
