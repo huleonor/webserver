@@ -340,7 +340,7 @@ void	ServerManager::monitorClients()
 			_pfds[i].events = POLLOUT;
 		}
 		CgiHandler* cgi = c->getCgi();
-		if (cgi && cgi->getPid() > 0 && time(NULL) - cgi->getStartTime() >= 60)
+		if (cgi && cgi->getPid() > 0 && time(NULL) - cgi->getStartTime() >= 10)
 		{
 			kill(cgi->getPid(), SIGKILL);
 			cgi->checkWaitpid();
