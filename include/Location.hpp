@@ -17,6 +17,7 @@ private:
 	std::vector<std::string> _cgi_ext;
 	std::vector<std::string> _cgi_path;
 	std::string              _upload_path;
+	unsigned long            _client_max_body_size;
 
 public:
 // --- Lifecycle ---
@@ -35,6 +36,7 @@ public:
 	const std::vector<std::string>& getCgiExt() const;
 	const std::vector<std::string>& getCgiPath() const;
 	const std::string&              getUploadPath() const;
+	unsigned long                   getClientMaxBodySize() const;
 
 // --- Setters ---
 	void	setPath(const std::string& path);
@@ -46,10 +48,11 @@ public:
 	void	addCgiExt(const std::string& ext);
 	void	addCgiPath(const std::string& path);
 	void	setUploadPath(const std::string& path);
+	void	setClientMaxBodySize(unsigned long size);
 
 // --- Validations ---
 	bool	isValidMethod(const std::string& method) const;
-	bool	findFileExtension(const std::string& path, const std::string& loc) const;
+	bool	findFileExtension(const std::string& path) const;
 };
 
 #endif

@@ -31,6 +31,14 @@ static std::string	getMimeType(const std::string& path)
 }
 
 /* ---------------------------- Internal: Request --------------------------- */
+unsigned long	Client::getEffectiveBodyLimit() const
+{
+	const Location* loc = _server->findLocation(_request.path);
+	if (loc && loc->getClientMaxBodySize() > 0)
+		return loc->getClientMaxBodySize();
+	return _server->getClientMaxBodySize();
+}
+
 void	Client::receiveHeader(const std::string& request)
 {
 	if (_request_buffer.size() + request.size() > Client::MAX_HEADER_SIZE)
@@ -70,7 +78,7 @@ void	Client::receiveHeader(const std::string& request)
 				buildErrorResponse(400);
 				return ;
 			}
-			if (_content_length > _server->getClientMaxBodySize())
+			if (_content_length > getEffectiveBodyLimit())
 			{
 				buildErrorResponse(413);
 				return ;
@@ -91,7 +99,7 @@ void	Client::receiveHeader(const std::string& request)
 
 void	Client::receiveBody(const std::string& request)
 {
-	if (_request_buffer.size() + request.size() > _server->getClientMaxBodySize())
+	if (!_chunked && _request_buffer.size() + request.size() > getEffectiveBodyLimit())
 	{
 		buildErrorResponse(413);
 		return ;
@@ -126,7 +134,7 @@ void	Client::receiveBody(const std::string& request)
 			return ;
 		_request.body += _request_buffer.substr(pos + 2, chunk_size);
 		_request_buffer.erase(0, pos + 2 + chunk_size + 2);
-		if (_request.body.size() > _server->getClientMaxBodySize())
+		if (_request.body.size() > getEffectiveBodyLimit())
 		{
 			buildErrorResponse(413);
 			return ;
@@ -162,7 +170,7 @@ void	Client::parseMultipartIfNeeded()
 }
 
 /* --------------------------- Internal: Response --------------------------- */
-void	Client::buildAutoindex(const std::string& dirPath, const std::string& loc)
+void	Client::buildAutoindex(const std::string& dirPath, const std::string& uri)
 {
 	DIR*	dir = opendir(dirPath.c_str());
 	if (!dir)
@@ -180,8 +188,8 @@ void	Client::buildAutoindex(const std::string& dirPath, const std::string& loc)
 		std::string name = entry->d_name;
 		if (name == ".")
 			continue ;
-		html << "<li><a href=\"" << loc
-			<< (loc[loc.size() - 1] == '/' ? "" : "/") << name << "\">" << name << "</a></li>";
+		html << "<li><a href=\"" << getRequest().uri
+			<< (uri[uri.size() - 1] == '/' ? "" : "/") << name << "\">" << name << "</a></li>";
 	}
 	closedir(dir);
 	html << "</ul><hr></body></html>";
@@ -355,9 +363,10 @@ void	Client::handleGet(const Location& loc)
 		_status = WRITING;
 		return ;
 	}
-	if (_request.isValidPath() && S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
+	if (!_request.isValidPath())
+		return buildErrorResponse(_request.error_code);
+	if (S_ISDIR(_request.target_info.st_mode) && _request.path[_request.path.size() - 1] != '/')
 		_request.path += '/';
-
 	if (!_request.path.empty() && _request.path[_request.path.size() - 1] == '/')
 	{
 		std::string	index = loc.getIndex().empty() ? _server->getIndex() : loc.getIndex();
@@ -366,20 +375,22 @@ void	Client::handleGet(const Location& loc)
 			_request.path += index;
 		else if (loc.getAutoindex())
 		{
-			buildAutoindex(_request.path, loc.getPath());
+			buildAutoindex(_request.path, _request.uri);
 			return ;
 		}
 		else
 		{
-			buildErrorResponse(403);
+			if (index.empty())
+				buildErrorResponse(403);
+			else
+				buildErrorResponse(404);
 			return ;
 		}
 	}
-
 	std::ifstream	file(_request.path.c_str(), std::ios::binary);
 	if (!file.is_open())
 	{
-		buildErrorResponse(404);
+		buildErrorResponse(500);
 		return ;
 	}
 	std::ostringstream	ss;
@@ -404,7 +415,7 @@ void	Client::handlePost(const Location& loc)
 	{
 		if (!S_ISDIR(_request.target_info.st_mode))
 			_request.error_code = 404;
-		if (!(_request.target_info.st_mode & S_IWUSR)
+		else if (!(_request.target_info.st_mode & S_IWUSR)
 			|| !(_request.target_info.st_mode & S_IXUSR))
 				_request.error_code = 403;
 	}
@@ -451,7 +462,7 @@ void	Client::handleDelete()
 void	Client::handleCGI(const Location& loc)
 {
 	_cgi = new CgiHandler(_request, *this);
-	_cgi->extractCgiInfo(loc.getPath());
+	_cgi->extractCgiInfo();
 	if (_request.error_code != 0)
 		return ;
 	const std::vector<std::string>&	cgi_exts = loc.getCgiExt();
@@ -469,14 +480,12 @@ void	Client::validateAndReplacePath(const Location& loc)
 	std::string	root;
 	if (!loc.getUploadPath().empty())
 	{
-		size_t	pos = _request.path.find(loc.getPath());
-		pos = pos + loc.getPath().size();
-		if (_request.path[pos] == '/')
-			pos++;
 		root = loc.getUploadPath();
 		normalizeSlash(root);
-		_request.path.erase(0, pos);
-		_request.path = root + '/' + _request.path;
+		std::string	suffix = _request.path.substr(loc.getPath().size());
+		if (!suffix.empty() && suffix[0] == '/')
+			suffix.erase(0, 1);
+		_request.path = root + '/' + suffix;
 	}
 	else
 	{
@@ -491,8 +500,7 @@ void	Client::validateAndReplacePath(const Location& loc)
 		}
 		else
 			_request.path = root + _request.path;
-		normalizeSlash(_request.path);
 	}
 	if (!_request.resolvePathWithinRoot(root))
-		buildErrorResponse(403);
+		return buildErrorResponse(403);
 }

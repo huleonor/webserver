@@ -114,9 +114,8 @@ void	CgiHandler::setStatus(Status status)				{ _status = status; }
 void	CgiHandler::setInterpreterPath(const std::string& path) { _interpreter_path = path; }
 
 /* ------------------------------- CGI Parsing ------------------------------ */
-void	CgiHandler::extractCgiInfo(const std::string& loc)
+void	CgiHandler::extractCgiInfo()
 {
-	(void)loc;
 	size_t search_start = (_request.path.size() >= 2 && _request.path[0] == '.' && _request.path[1] == '/') ? 2 : 0;
 	size_t dot = _request.path.find('.', search_start);
 	if (dot == std::string::npos)
