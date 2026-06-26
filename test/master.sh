@@ -13,7 +13,7 @@ echo "=== Master Test Runner ==="
 echo "Description: Runs all .sh test scripts in this folder sequentially and stops if webserv crashes"
 
 for script in ./*.sh; do
-	if [ "$script" != "$0" ]; then
+	if [ "$script" != "$0" ] && [ "$script" != "./manual_stress_test.sh" ]; then
 		bash "$script"
 		if ! kill -0 $WEBSERV_PID 2>/dev/null; then
             echo -e "${RED}[ERROR] webserv crashed after $script/or server is not running${RESET}"

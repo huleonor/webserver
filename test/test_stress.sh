@@ -20,11 +20,17 @@ PID1=$!
 siege -b -t $DURATION -q $URL2/ &
 PID2=$!
 
+PID3=""
+PID4=""
+
+
 wait $PID1
 if [ $? -eq 0 ]; then
 	echo -e "${GREEN}[PASS] Siege URL1${RESET}"
 else
     echo -e "${RED}[FAIL] Siege URL1${RESET}"
+	bash manual_stress_test.sh 8002 &
+	PID3=$!
 fi
 
 wait $PID2
@@ -32,6 +38,10 @@ if [ $? -eq 0 ]; then
 	echo -e "${GREEN}[PASS] Siege URL2${RESET}"
 else
     echo -e "${RED}[FAIL] Siege URL2${RESET}"
+	bash manual_stress_test.sh 8003 &
+	PID4=$!
 fi
 
+[ -n "$PID3" ] && wait $PID3
+[ -n "$PID4" ] && wait $PID4
 echo ""

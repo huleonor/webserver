@@ -3,3 +3,5 @@ myGuide.md
 .vscode
 resources/cgi.md
 *.o
+test_folder
+configs/test.conf

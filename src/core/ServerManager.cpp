@@ -164,6 +164,8 @@ void	ServerManager::handleClientPollCleanUp(size_t& pfds_pos)
 	closeConnection(pfds_pos);
 }
 
+bool	ServerManager::hasCgiClients()	{ return (!_cgi_pipes.empty()); }
+
 /* ----------------------------- Internal: CGI ------------------------------ */
 void	ServerManager::handleCgiProcess(size_t& pfds_pos)
 {
@@ -442,7 +444,10 @@ void	ServerManager::start()
 		<< "] Server running...\033[0m" << std::endl;
 	while (_running)
 	{
-		int	num_events = poll(&_pfds[0], _pfds.size(), 60000);
+		int	timeout = 60000;
+		if (hasCgiClients())
+			timeout = 10000;
+		int	num_events = poll(&_pfds[0], _pfds.size(), timeout);
 		if (num_events == -1)
 		{
 			if (errno == EINTR)
